@@ -60,7 +60,7 @@
     "@protobuf-ts/runtime" "^2.4.0"
     typescript "^3.9"
 
-"@protobuf-ts/plugin@^2.2.2":
+"@protobuf-ts/plugin@^2.4.0":
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/@protobuf-ts/plugin/-/plugin-2.4.0.tgz#da5232a4e63fcbbc1e95336e820b7ca463bd1a25"
   integrity sha512-Q3PYzeYrsrZ2Hy/DY+jYCKDWaVjk8lxekhVjVvveN0cdUnawSWCsGkiM2CqeQ2PAWptOmFHIrz3VFqSrOx5sFQ==
@@ -83,7 +83,7 @@
   dependencies:
     "@protobuf-ts/runtime" "^2.4.0"
 
-"@protobuf-ts/runtime@^2.2.2", "@protobuf-ts/runtime@^2.4.0":
+"@protobuf-ts/runtime@^2.4.0":
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/@protobuf-ts/runtime/-/runtime-2.4.0.tgz#f9c6c81f52745c823e3bfcc6e3d724c2ff1dc647"
   integrity sha512-73/dE1ZCnNSmxN+M07Zu916TIx5I+WVpxQaMF3TrgenUiYqqQvNRpmfksmL9iiJBNMZqIts1u/flc3pzRFDy6Q==
