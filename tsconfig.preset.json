@@ -1,0 +1,16 @@
+{
+	"extends": "./node_modules/@tsconfig/node14/tsconfig.json",
+	"compilerOptions": {
+		"sourceMap": true,
+		"paths": {
+			"*": ["../node_modules/*"]
+		},
+		"declaration": true,
+		"importHelpers": true,
+		"types": ["node"],
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true
+	},
+	"compileOnSave": false
+}
