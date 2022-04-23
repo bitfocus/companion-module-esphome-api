@@ -47,7 +47,7 @@ export class EsphomeClient extends EventEmitter {
 	private addEntity(instance: EntityType) {
 		const id = instance.id
 		if (this.entities[id]) {
-			this.emit('error', new Error(`Duplicate Entity Id ${id}`))
+			this.emit('warn', `Ignoring Duplicate Entity Id: ${id}`)
 		} else {
 			this.entities[id] = instance
 			instance.on('state', (entity) => this.onEntityStateChanged(entity))

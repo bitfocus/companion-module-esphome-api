@@ -26,6 +26,10 @@ class ESPHomeInstance extends InstanceSkel<DeviceConfig> {
 			this.checkFeedbacks()
 		})
 
+		this.client.on('warn', (msg) => {
+			this.log('warn', msg);
+		});
+
 		this.client.on('error', (err) => {
 			this.status(this.STATUS_ERROR, err.message)
 			this.log('error', 'ESPHome client error: ' + err.message)
