@@ -1,6 +1,6 @@
 {
 	"name": "esphome-api",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "ESPHome client module for Companion",
 	"keywords": [
 		"esphome"
@@ -11,6 +11,7 @@
 	"homepage": "https://github.com/bitfocus/companion-module-esphome-api#readme",
 	"main": "dist/index.js",
 	"scripts": {
+		"postinstall": "yarn build",
 		"prepare": "husky install",
 		"build": "npx rimraf dist && npx typescript@~4.6 -p tsconfig.build.json",
 		"build:main": "tsc -p tsconfig.build.json",
