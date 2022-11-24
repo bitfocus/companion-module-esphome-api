@@ -26,5 +26,11 @@ export function GetConfigFields(instance: InstanceSkel<any>): SomeCompanionConfi
 			max: 65535,
 			default: DEFAULT_PORT,
 		},
+		{
+			type: 'textinput',
+			id: 'password',
+			label: 'Password',
+			width: 12,
+		},
 	]
 }
