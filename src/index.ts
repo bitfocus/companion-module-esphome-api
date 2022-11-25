@@ -12,11 +12,11 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 		super(internal)
 
 		this.client.on('connected', () => {
-			this.updateStatus(InstanceStatus.Ok, 'Connected')
+			this.updateStatus(InstanceStatus.Ok)
 		})
 
 		this.client.on('disconnected', () => {
-			this.updateStatus(InstanceStatus.Disconnected, 'Disconnected')
+			this.updateStatus(InstanceStatus.Disconnected)
 		})
 
 		this.client.on('refreshEntities', () => {
