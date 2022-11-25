@@ -1,5 +1,4 @@
-import InstanceSkel from '../../../../instance_skel'
-import { CompanionActions, CompanionFeedbacks } from '../../../../instance_skel_types'
+import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { PrefixedActionIds, FeedbackId } from '../util'
@@ -11,11 +10,11 @@ export const CoverAdapter: EntityAdapter<Cover> = {
 		return instance instanceof Cover
 	},
 
-	createActions: (client: EsphomeClient): CompanionActions => {
-		const actions: CompanionActions = {}
+	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+		const actions: CompanionActionDefinitions = {}
 		client.getAll(CoverAdapter).forEach((cover) => {
 			actions[PrefixedActionIds.CoverPosition + cover.id] = {
-				label: `${cover.name}: Set cover position`,
+				name: `${cover.name}: Set cover position`,
 				options: [
 					{
 						type: 'number',
@@ -36,13 +35,13 @@ export const CoverAdapter: EntityAdapter<Cover> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceSkel<any>, client: EsphomeClient): CompanionFeedbacks => {
-		const feedbacks: CompanionFeedbacks = {}
+	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+		const feedbacks: CompanionFeedbackDefinitions = {}
 		const entities = client.getAll(CoverAdapter)
 		if (entities.length) {
 			feedbacks[FeedbackId.CoverOpen] = {
 				type: 'boolean',
-				label: 'Change from cover open',
+				name: 'Change from cover open',
 				description: 'If the cover open matches the rule, change style of the bank',
 				options: [
 					EntityPicker(entities),
@@ -53,9 +52,9 @@ export const CoverAdapter: EntityAdapter<Cover> = {
 						default: true,
 					},
 				],
-				style: {
-					color: instance.rgb(0, 0, 0),
-					bgcolor: instance.rgb(0, 255, 0),
+				defaultStyle: {
+					color: combineRgb(0, 0, 0),
+					bgcolor: combineRgb(0, 255, 0),
 				},
 				callback: (feedback): boolean => {
 					const entity = client.getEntity(String(feedback.options.entity_id), CoverAdapter)

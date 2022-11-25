@@ -1,5 +1,4 @@
-import InstanceSkel from '../../../../instance_skel'
-import { CompanionActions, CompanionFeedbacks } from '../../../../instance_skel_types'
+import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { PrefixedActionIds, PrefixedFeedbackIds } from '../util'
@@ -10,12 +9,12 @@ export const SelectAdapter: EntityAdapter<Select> = {
 		return instance instanceof Select
 	},
 
-	createActions: (client: EsphomeClient): CompanionActions => {
-		const actions: CompanionActions = {}
+	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+		const actions: CompanionActionDefinitions = {}
 		client.getAll(SelectAdapter).forEach((select) => {
 			const options = select.options.map((o) => ({ id: o, label: o }))
 			actions[PrefixedActionIds.SelectState + select.id] = {
-				label: `${select.name}: Set select state`,
+				name: `${select.name}: Set select state`,
 				options: [
 					{
 						type: 'dropdown',
@@ -35,13 +34,13 @@ export const SelectAdapter: EntityAdapter<Select> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceSkel<any>, client: EsphomeClient): CompanionFeedbacks => {
-		const feedbacks: CompanionFeedbacks = {}
+	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+		const feedbacks: CompanionFeedbackDefinitions = {}
 		client.getAll(SelectAdapter).forEach((select) => {
 			const options = select.options.map((o) => ({ id: o, label: o }))
 			feedbacks[PrefixedFeedbackIds.SelectState + select.id] = {
 				type: 'boolean',
-				label: `${select.name}: Change from select state`,
+				name: `${select.name}: Change from select state`,
 				description: 'If the select state matches the rule, change style of the bank',
 				options: [
 					{
@@ -52,9 +51,9 @@ export const SelectAdapter: EntityAdapter<Select> = {
 						choices: options,
 					},
 				],
-				style: {
-					color: instance.rgb(0, 0, 0),
-					bgcolor: instance.rgb(0, 255, 0),
+				defaultStyle: {
+					color: combineRgb(0, 0, 0),
+					bgcolor: combineRgb(0, 255, 0),
 				},
 				callback: (feedback): boolean => select.isState(String(feedback.options.state)),
 			}

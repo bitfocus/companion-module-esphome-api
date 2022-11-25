@@ -1,21 +1,22 @@
-import InstanceSkel = require('../../../instance_skel')
-import { CompanionConfigField, CompanionSystem } from '../../../instance_skel_types'
+import { InstanceBase, InstanceStatus, SomeCompanionConfigField, runEntrypoint } from '@companion-module/base'
 import { EsphomeClient } from './esphomeClient'
 import { DeviceConfig, GetConfigFields } from './config'
 import { GetActionsList } from './actions'
 import { GetFeedbacksList } from './feedback'
 
-class ESPHomeInstance extends InstanceSkel<DeviceConfig> {
+class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 	private readonly client: EsphomeClient = new EsphomeClient()
-	constructor(system: CompanionSystem, id: string, config: DeviceConfig) {
-		super(system, id, config)
+	private config?: DeviceConfig
+
+	constructor(internal: unknown) {
+		super(internal)
 
 		this.client.on('connected', () => {
-			this.status(this.STATUS_OK, 'Connected')
+			this.updateStatus(InstanceStatus.Ok, 'Connected')
 		})
 
 		this.client.on('disconnected', () => {
-			this.status(this.STATUS_ERROR, 'Disconnected')
+			this.updateStatus(InstanceStatus.Disconnected, 'Disconnected')
 		})
 
 		this.client.on('refreshEntities', () => {
@@ -31,50 +32,54 @@ class ESPHomeInstance extends InstanceSkel<DeviceConfig> {
 		});
 
 		this.client.on('error', (err) => {
-			this.status(this.STATUS_ERROR, err.message)
+			this.updateStatus(InstanceStatus.UnknownError, err.message)
 			this.log('error', 'ESPHome client error: ' + err.message)
 		})
 	}
 
-	public config_fields(): CompanionConfigField[] {
+	public getConfigFields(): SomeCompanionConfigField[] {
 		return GetConfigFields(this)
 	}
 
-	public init(): void {
-		this.initClient()
+	public async init(config: DeviceConfig): Promise<void> {
+		this.config = config
+		this.initClient(config)
 	}
 
-	private initClient() {
-		if (this.config.host) {
-			this.client.connect(this.config.host, this.config.port, this.config.password)
+	private initClient(config: DeviceConfig) {
+		if (config.host) {
+			this.client.connect(config.host, config.port, config.password)
 		} else {
 			this.client.disconnect()
 		}
 	}
 
 	private refreshCompanionInstances() {
-		this.setActions(GetActionsList(this.client))
+		this.setActionDefinitions(GetActionsList(this.client))
 		this.setFeedbackDefinitions(GetFeedbacksList(this, this.client))
 	}
 
-	public updateConfig(config: DeviceConfig): void {
+	public async configUpdated(config: DeviceConfig): Promise<void> {
 		let resetConnection = false
 
-		if (this.config.host != config.host || this.config.port != config.port || this.config.password != config.password) {
+		if (!this.config
+			|| this.config.host != config.host
+			|| this.config.port != config.port
+			|| this.config.password != config.password) {
 			resetConnection = true
 		}
 
 		this.config = config
 
 		if (resetConnection === true) {
-			this.initClient()
+			this.initClient(config);
 		}
 	}
 
-	public destroy(): void {
+	public async destroy(): Promise<void> {
 		this.client.disconnect()
-		this.debug('destroy', this.id)
+		this.log('debug', 'destroy')
 	}
 }
 
-exports = module.exports = ESPHomeInstance
+runEntrypoint(ESPHomeInstance, [])

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events'
 import { HelloRequest, ConnectRequest, HelloResponse, ConnectResponse, PingRequest, PingResponse } from '../proto/api'
-import TCPClient from '../../../../tcp'
+import { TCPHelper } from '@companion-module/base'
 import { deserialize, EsphomeBinaryReadOptions, extractMessageId, serialize } from './util'
 import { IMessageType } from '@protobuf-ts/runtime'
 
@@ -35,7 +35,7 @@ class MessageHandler extends EventEmitter {
 }
 
 export class EsphomeSocket extends EventEmitter {
-	private tcp: TCPClient
+	private tcp: TCPHelper
 	private buffer: Buffer
 	private connectionState: ConnectionState = ConnectionState.Connecting
 	private keepaliveTimer?: NodeJS.Timeout
@@ -44,7 +44,7 @@ export class EsphomeSocket extends EventEmitter {
 	constructor(host: string, port: number = DEFAULT_PORT, private readonly password: string = '') {
 		super()
 		if (!host) throw new Error('host is required')
-		this.tcp = new TCPClient(host, port)
+		this.tcp = new TCPHelper(host, port)
 		this.buffer = Buffer.from([])
 		this.tcp.on('data', (data) => {
 			this.buffer = Buffer.concat([this.buffer, data])
@@ -136,7 +136,7 @@ export class EsphomeSocket extends EventEmitter {
 		const request = requestType.create(data)
 		const messageId = extractMessageId(requestType)
 		const payload = requestType.toBinary(request)
-		this.tcp.write(serialize(messageId, payload), (err) => {
+		this.tcp.send(serialize(messageId, payload)).catch((err) => {
 			if (err) this.emit('error', err)
 		})
 	}

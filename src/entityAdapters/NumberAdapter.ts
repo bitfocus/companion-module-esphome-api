@@ -1,5 +1,4 @@
-import InstanceSkel from '../../../../instance_skel'
-import { CompanionActions, CompanionFeedbacks } from '../../../../instance_skel_types'
+import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { PrefixedActionIds, FeedbackId } from '../util'
@@ -11,11 +10,11 @@ export const NumberAdapter: EntityAdapter<NumberEntity> = {
 		return instance instanceof NumberEntity
 	},
 
-	createActions: (client: EsphomeClient): CompanionActions => {
-		const actions: CompanionActions = {}
+	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+		const actions: CompanionActionDefinitions = {}
 		client.getAll(NumberAdapter).forEach((numberEntity) => {
 			actions[PrefixedActionIds.NumberState + numberEntity.id] = {
-				label: `${numberEntity.name}: Set number state`,
+				name: `${numberEntity.name}: Set number state`,
 				options: [
 					{
 						type: 'number',
@@ -36,22 +35,22 @@ export const NumberAdapter: EntityAdapter<NumberEntity> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceSkel<any>, client: EsphomeClient): CompanionFeedbacks => {
-		const feedbacks: CompanionFeedbacks = {}
+	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+		const feedbacks: CompanionFeedbackDefinitions = {}
 		const entities = client.getAll(NumberAdapter)
 		if (entities.length) {
 			feedbacks[FeedbackId.NumberState] = {
 				type: 'boolean',
-				label: 'Change from number state',
+				name: 'Change from number state',
 				description: 'If the number state matches the rule, change style of the bank',
 				options: [
 					EntityPicker(entities),
 					NumberComparitorPicker(),
 					NumberValuePicker(),
 				],
-				style: {
-					color: instance.rgb(0, 0, 0),
-					bgcolor: instance.rgb(0, 255, 0),
+				defaultStyle: {
+					color: combineRgb(0, 0, 0),
+					bgcolor: combineRgb(0, 255, 0),
 				},
 				callback: (feedback): boolean => {
 					const entity = client.getEntity(String(feedback.options.entity_id), NumberAdapter)

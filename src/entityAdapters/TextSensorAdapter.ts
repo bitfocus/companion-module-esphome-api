@@ -1,5 +1,4 @@
-import InstanceSkel from '../../../../instance_skel'
-import { CompanionActions, CompanionFeedbacks } from '../../../../instance_skel_types'
+import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb, Regex } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { FeedbackId } from '../util'
@@ -11,17 +10,17 @@ export const TextSensorAdapter: EntityAdapter<TextSensor> = {
 		return instance instanceof TextSensor
 	},
 
-	createActions: (client: EsphomeClient): CompanionActions => {
+	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
 		return {}
 	},
 
-	createFeedbacks: (instance: InstanceSkel<any>, client: EsphomeClient): CompanionFeedbacks => {
-		const feedbacks: CompanionFeedbacks = {}
+	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+		const feedbacks: CompanionFeedbackDefinitions = {}
 		const entities = client.getAll(TextSensorAdapter)
 		if (entities.length) {
 			feedbacks[FeedbackId.TextSensorValue] = {
 				type: 'boolean',
-				label: 'Change from text sensor state',
+				name: 'Change from text sensor state',
 				description: 'If the text sensor state matches the rule, change style of the bank',
 				options: [
 					EntityPicker(entities),
@@ -30,12 +29,12 @@ export const TextSensorAdapter: EntityAdapter<TextSensor> = {
 						id: 'state',
 						label: 'State Value',
 						required: true,
-						regex: instance.REGEX_SOMETHING,
+						regex: Regex.SOMETHING,
 					},
 				],
-				style: {
-					color: instance.rgb(0, 0, 0),
-					bgcolor: instance.rgb(0, 255, 0),
+				defaultStyle: {
+					color: combineRgb(0, 0, 0),
+					bgcolor: combineRgb(0, 255, 0),
 				},
 				callback: (feedback): boolean => {
 					const entity = client.getEntity(String(feedback.options.entity_id), TextSensorAdapter)

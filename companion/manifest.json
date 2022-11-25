@@ -1,0 +1,26 @@
+{
+	"id": "esphome-api",
+	"name": "esphome-api",
+	"shortname": "esphome",
+	"description": "ESPHome client module for Companion",
+	"version": "2.0.0",
+	"license": "MIT",
+	"repository": "git+https://github.com/bitfocus/companion-module-esphome-api.git",
+	"bugs": "https://github.com/bitfocus/companion-module-esphome-api/issues",
+	"maintainers": [
+		{
+			"name": "Bradley Wehmeier",
+			"email": "BradleyWehmeier@gmail.com"
+		}
+	],
+	"legacyIds": [],
+	"runtime": {
+		"type": "node14",
+		"api": "nodejs-ipc",
+		"apiVersion": "0.0.0",
+		"entrypoint": "../dist/index.js"
+	},
+	"manufacturer": "ESPHome",
+	"products": ["API"],
+	"keywords": ["esphome"]
+}

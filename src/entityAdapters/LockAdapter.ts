@@ -1,5 +1,4 @@
-import InstanceSkel from '../../../../instance_skel'
-import { CompanionActions, CompanionFeedbacks } from '../../../../instance_skel_types'
+import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { PrefixedActionIds, FeedbackId } from '../util'
@@ -12,8 +11,8 @@ export const LockAdapter: EntityAdapter<Lock> = {
 		return instance instanceof Lock
 	},
 
-	createActions: (client: EsphomeClient): CompanionActions => {
-		const actions: CompanionActions = {}
+	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+		const actions: CompanionActionDefinitions = {}
 		client.getAll(LockAdapter).forEach((lock) => {
 			const options = [
 				{ id: LockCommand.LOCK_LOCK, label: 'Lock' },
@@ -23,7 +22,7 @@ export const LockAdapter: EntityAdapter<Lock> = {
 				options.push({ id: LockCommand.LOCK_OPEN, label: 'Open' })
 			}
 			actions[PrefixedActionIds.LockCommand + lock.id] = {
-				label: `${lock.name}: Set lock state`,
+				name: `${lock.name}: Set lock state`,
 				options: [
 					{
 						type: 'dropdown',
@@ -41,13 +40,13 @@ export const LockAdapter: EntityAdapter<Lock> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceSkel<any>, client: EsphomeClient): CompanionFeedbacks => {
-		const feedbacks: CompanionFeedbacks = {}
+	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+		const feedbacks: CompanionFeedbackDefinitions = {}
 		const entities = client.getAll(LockAdapter)
 		if (entities.length) {
 			feedbacks[FeedbackId.LockState] = {
 				type: 'boolean',
-				label: 'Change from lock state',
+				name: 'Change from lock state',
 				description: 'If the lock state matches the rule, change style of the bank',
 				options: [
 					EntityPicker(entities),
@@ -66,9 +65,9 @@ export const LockAdapter: EntityAdapter<Lock> = {
 						],
 					},
 				],
-				style: {
-					color: instance.rgb(0, 0, 0),
-					bgcolor: instance.rgb(0, 255, 0),
+				defaultStyle: {
+					color: combineRgb(0, 0, 0),
+					bgcolor: combineRgb(0, 255, 0),
 				},
 				callback: (feedback): boolean => {
 					const entity = client.getEntity(String(feedback.options.entity_id), LockAdapter)

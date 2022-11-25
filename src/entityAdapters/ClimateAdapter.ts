@@ -1,5 +1,4 @@
-import InstanceSkel from '../../../../instance_skel'
-import { CompanionActions, CompanionFeedbacks, CompanionInputFieldDropdown } from '../../../../instance_skel_types'
+import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, CompanionInputFieldDropdown, combineRgb } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { FeedbackId, PrefixedActionIds } from '../util'
@@ -12,11 +11,11 @@ export const ClimateAdapter: EntityAdapter<Climate> = {
 		return instance instanceof Climate
 	},
 
-	createActions: (client: EsphomeClient): CompanionActions => {
-		const actions: CompanionActions = {}
+	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+		const actions: CompanionActionDefinitions = {}
 		client.getAll(ClimateAdapter).forEach((climate) => {
 			actions[PrefixedActionIds.ClimateMode + climate.id] = {
-				label: `${climate.name}: Set climate mode`,
+				name: `${climate.name}: Set climate mode`,
 				options: [ClimateModePicker(climate.supportedModes)],
 				callback: (evt): void => {
 					if (typeof evt.options.mode === 'number') {
@@ -28,18 +27,18 @@ export const ClimateAdapter: EntityAdapter<Climate> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceSkel<any>, client: EsphomeClient): CompanionFeedbacks => {
-		const feedbacks: CompanionFeedbacks = {}
+	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+		const feedbacks: CompanionFeedbackDefinitions = {}
 		const entities = client.getAll(ClimateAdapter)
 		if (entities.length) {
 			feedbacks[FeedbackId.ClimateMode] = {
 				type: 'boolean',
-				label: 'Change from climate mode',
+				name: 'Change from climate mode',
 				description: 'If the climate mode matches the rule, change style of the bank',
 				options: [EntityPicker(entities), ClimateModePicker(AllClimateModes)],
-				style: {
-					color: instance.rgb(0, 0, 0),
-					bgcolor: instance.rgb(0, 255, 0),
+				defaultStyle: {
+					color: combineRgb(0, 0, 0),
+					bgcolor: combineRgb(0, 255, 0),
 				},
 				callback: (feedback): boolean => {
 					const entity = client.getEntity(String(feedback.options.entity_id), ClimateAdapter)

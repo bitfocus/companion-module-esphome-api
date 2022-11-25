@@ -1,5 +1,4 @@
-import InstanceSkel = require('../../../instance_skel')
-import { SomeCompanionConfigField } from '../../../instance_skel_types'
+import { InstanceBase, Regex, SomeCompanionConfigField } from '@companion-module/base'
 import { DEFAULT_PORT } from './connection/esphomeSocket'
 
 export interface DeviceConfig {
@@ -8,14 +7,14 @@ export interface DeviceConfig {
 	password?: string
 }
 
-export function GetConfigFields(instance: InstanceSkel<any>): SomeCompanionConfigField[] {
+export function GetConfigFields(instance: InstanceBase<any>): SomeCompanionConfigField[] {
 	return [
 		{
 			type: 'textinput',
 			id: 'host',
 			label: 'Host',
 			width: 8,
-			regex: instance.REGEX_SOMETHING,
+			regex: Regex.SOMETHING,
 		},
 		{
 			type: 'number',

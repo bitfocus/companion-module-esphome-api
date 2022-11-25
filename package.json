@@ -1,19 +1,15 @@
 {
 	"name": "esphome-api",
-	"version": "1.1.0",
+	"version": "2.0.0",
 	"description": "ESPHome client module for Companion",
 	"keywords": [
 		"esphome"
 	],
-	"manufacturer": "ESPHome",
-	"product": "API",
-	"shortname": "esphome",
 	"homepage": "https://github.com/bitfocus/companion-module-esphome-api#readme",
 	"main": "dist/index.js",
 	"scripts": {
-		"postinstall": "yarn build",
 		"prepare": "husky install",
-		"build": "npx rimraf dist && npx typescript@~4.6 -p tsconfig.build.json",
+		"build": "rimraf dist && yarn build:main",
 		"build:main": "tsc -p tsconfig.build.json",
 		"build:watch": "tsc -p tsconfig.build.json --watch",
 		"lint": "eslint .",
@@ -37,12 +33,14 @@
 		]
 	},
 	"dependencies": {
+		"@companion-module/base": "~0.5.1",
 		"@protobuf-ts/runtime": "^2.4.0",
 		"@protobuf-ts/runtime-rpc": "^2.4.0",
 		"@tsconfig/node14": "^1.0.1",
 		"@types/node": "^14.18.3"
 	},
 	"devDependencies": {
+		"@companion-module/tools": "^0.3.3",
 		"@protobuf-ts/plugin": "^2.4.0",
 		"@typescript-eslint/eslint-plugin": "^5.14.0",
 		"@typescript-eslint/parser": "^5.14.0",

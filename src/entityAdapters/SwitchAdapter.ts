@@ -1,5 +1,4 @@
-import InstanceSkel from '../../../../instance_skel'
-import { CompanionActions, CompanionFeedbacks } from '../../../../instance_skel_types'
+import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { ActionId, FeedbackId, OnOffToggle } from '../util'
@@ -11,12 +10,12 @@ export const SwitchAdapter: EntityAdapter<Switch> = {
 		return instance instanceof Switch
 	},
 
-	createActions: (client: EsphomeClient): CompanionActions => {
-		const actions: CompanionActions = {}
+	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+		const actions: CompanionActionDefinitions = {}
 		const switchEntities = client.getAll(SwitchAdapter)
 		if (switchEntities.length) {
 			actions[ActionId.SwitchState] = {
-				label: 'Set switch state',
+				name: 'Set switch state',
 				options: [EntityPicker(switchEntities), OnOffTogglePicker()],
 				callback: (evt): void => {
 					const id = evt.options.entity_id as string
@@ -41,18 +40,18 @@ export const SwitchAdapter: EntityAdapter<Switch> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceSkel<any>, client: EsphomeClient): CompanionFeedbacks => {
-		const feedbacks: CompanionFeedbacks = {}
+	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+		const feedbacks: CompanionFeedbackDefinitions = {}
 		const entities = client.getAll(SwitchAdapter)
 		if (entities.length) {
 			feedbacks[FeedbackId.SwitchState] = {
 				type: 'boolean',
-				label: 'Change from switch state',
+				name: 'Change from switch state',
 				description: 'If the switch state matches the rule, change style of the bank',
 				options: [EntityPicker(entities), OnOffPicker()],
-				style: {
-					color: instance.rgb(0, 0, 0),
-					bgcolor: instance.rgb(0, 255, 0),
+				defaultStyle: {
+					color: combineRgb(0, 0, 0),
+					bgcolor: combineRgb(0, 255, 0),
 				},
 				callback: (feedback): boolean => {
 					const entity = client.getEntity(String(feedback.options.entity_id), SwitchAdapter)

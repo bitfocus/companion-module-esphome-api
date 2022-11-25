@@ -1,4 +1,4 @@
-import { CompanionInputFieldCheckbox, CompanionInputFieldDropdown, CompanionInputFieldNumber, InputValue } from '../../../instance_skel_types'
+import { CompanionInputFieldCheckbox, CompanionInputFieldDropdown, CompanionInputFieldNumber, InputValue } from '@companion-module/base'
 import { OnOffToggle } from './util'
 
 export function OnOffTogglePicker(): CompanionInputFieldDropdown {

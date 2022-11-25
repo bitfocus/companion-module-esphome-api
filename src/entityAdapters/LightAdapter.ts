@@ -1,5 +1,4 @@
-import InstanceSkel from '../../../../instance_skel'
-import { CompanionActions, CompanionFeedbacks } from '../../../../instance_skel_types'
+import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { ActionId, FeedbackId, OnOffToggle } from '../util'
@@ -11,12 +10,12 @@ export const LightAdapter: EntityAdapter<Light> = {
 		return instance instanceof Light
 	},
 
-	createActions: (client: EsphomeClient): CompanionActions => {
-		const actions: CompanionActions = {}
+	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+		const actions: CompanionActionDefinitions = {}
 		const lightEntities = client.getAll(LightAdapter)
 		if (lightEntities.length) {
 			actions[ActionId.LightState] = {
-				label: 'Set light state',
+				name: 'Set light state',
 				options: [EntityPicker(lightEntities), OnOffTogglePicker()],
 				callback: (evt): void => {
 					const id = evt.options.entity_id as string
@@ -38,7 +37,7 @@ export const LightAdapter: EntityAdapter<Light> = {
 				},
 			}
 			actions[ActionId.LightBrightness] = {
-				label: 'Set light brightness (percentage)',
+				name: 'Set light brightness (percentage)',
 				options: [
 					EntityPicker(lightEntities.filter((light) => light.supportsBrightness)),
 					{
@@ -62,18 +61,18 @@ export const LightAdapter: EntityAdapter<Light> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceSkel<any>, client: EsphomeClient): CompanionFeedbacks => {
-		const feedbacks: CompanionFeedbacks = {}
+	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+		const feedbacks: CompanionFeedbackDefinitions = {}
 		const entities = client.getAll(LightAdapter)
 		if (entities.length) {
 			feedbacks[FeedbackId.LightState] = {
 				type: 'boolean',
-				label: 'Change from light state',
+				name: 'Change from light state',
 				description: 'If the light state matches the rule, change style of the bank',
 				options: [EntityPicker(entities), OnOffPicker()],
-				style: {
-					color: instance.rgb(0, 0, 0),
-					bgcolor: instance.rgb(0, 255, 0),
+				defaultStyle: {
+					color: combineRgb(0, 0, 0),
+					bgcolor: combineRgb(0, 255, 0),
 				},
 				callback: (feedback): boolean => {
 					const entity = client.getEntity(String(feedback.options.entity_id), LightAdapter)

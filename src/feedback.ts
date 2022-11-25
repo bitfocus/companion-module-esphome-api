@@ -1,9 +1,8 @@
-import InstanceSkel = require('../../../instance_skel')
-import { CompanionFeedbacks } from '../../../instance_skel_types'
+import { InstanceBase, CompanionFeedbackDefinitions } from '@companion-module/base'
 import { EntityAdapters } from './entityAdapters'
 import { EsphomeClient } from './esphomeClient'
 
-export function GetFeedbacksList(instance: InstanceSkel<any>, client: EsphomeClient): CompanionFeedbacks {
+export function GetFeedbacksList(instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions {
 	const feedbacks = {}
 
 	Object.values(EntityAdapters).forEach((adapter) => {

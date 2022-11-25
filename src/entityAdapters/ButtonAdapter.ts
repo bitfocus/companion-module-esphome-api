@@ -1,5 +1,4 @@
-import InstanceSkel from '../../../../instance_skel'
-import { CompanionActions, CompanionFeedbacks } from '../../../../instance_skel_types'
+import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { ActionId } from '../util'
@@ -11,12 +10,12 @@ export const ButtonAdapter: EntityAdapter<Button> = {
 		return instance instanceof Button
 	},
 
-	createActions: (client: EsphomeClient): CompanionActions => {
-		const actions: CompanionActions = {}
+	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+		const actions: CompanionActionDefinitions = {}
 		const buttonEntities = client.getAll(ButtonAdapter)
 		if (buttonEntities.length) {
 			actions[ActionId.ButtonPush] = {
-				label: 'Push Button',
+				name: 'Push Button',
 				options: [EntityPicker(buttonEntities)],
 				callback: (evt): void => {
 					const id = evt.options.entity_id as string
@@ -27,7 +26,7 @@ export const ButtonAdapter: EntityAdapter<Button> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceSkel<any>, client: EsphomeClient): CompanionFeedbacks => {
+	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
 		return {}
 	},
 }
