@@ -1,4 +1,4 @@
-import { BinaryReader, IMessageType, MESSAGE_TYPE } from '@protobuf-ts/runtime'
+import { BinaryReader, IMessageType } from '@protobuf-ts/runtime'
 
 /*
  * Floats are a leaky abstraction and converting from a 32-bit
@@ -17,14 +17,6 @@ class EsphomeBinaryReader extends BinaryReader {
 
 export const EsphomeBinaryReadOptions = {
 	readerFactory: (bytes: Uint8Array) => new EsphomeBinaryReader(bytes),
-}
-
-export function getMessageTypeFromInstance<I extends object, T extends I>(messageInstance: T): IMessageType<I> {
-	const messageType = (messageInstance as any)[MESSAGE_TYPE]
-	if (!messageType) {
-		throw new Error('messageInstance does not contain type information')
-	}
-	return messageType as IMessageType<I>
 }
 
 export function extractMessageId(messageType: IMessageType<object>): number {
