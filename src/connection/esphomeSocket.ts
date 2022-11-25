@@ -20,7 +20,7 @@ const ConnectResponseId = extractMessageId(ConnectResponse)
 const PingRequestId = extractMessageId(PingRequest)
 
 class MessageHandler extends EventEmitter {
-	constructor(private readonly type: IMessageType<any>) {
+	constructor(private readonly type: IMessageType<object>) {
 		super()
 	}
 
@@ -108,7 +108,7 @@ export class EsphomeSocket extends EventEmitter {
 		try {
 			await this.writeRequestAndReadResponse(PingRequest, {}, PingResponse, 2.5 * KEEPALIVE_MS)
 			this.startKeepaliveTimer()
-		} catch (e: any) {
+		} catch (e: unknown) {
 			this.emit('error', e)
 		}
 	}

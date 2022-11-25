@@ -6,7 +6,7 @@ import NumberEntity from '../entities/NumberEntity'
 import { compareNumber, EntityPicker, NumberComparitorPicker, NumberValuePicker } from '../choices'
 
 export const NumberAdapter: EntityAdapter<NumberEntity> = {
-	is: (instance: any): instance is NumberEntity => {
+	is: (instance: unknown): instance is NumberEntity => {
 		return instance instanceof NumberEntity
 	},
 

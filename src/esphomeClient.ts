@@ -66,11 +66,11 @@ export class EsphomeClient extends EventEmitter {
 		this.removeAllEntities()
 	}
 
-	public getAll<T extends EntityType>(entityClass: { is: (e: any) => e is T }): T[] {
+	public getAll<T extends EntityType>(entityClass: { is: (e: unknown) => e is T }): T[] {
 		return Object.values(this.entities).filter(entityClass.is)
 	}
 
-	public getEntity<T extends EntityType>(id: string, entityClass: { is: (e: any) => e is T }): T | undefined {
+	public getEntity<T extends EntityType>(id: string, entityClass: { is: (e: unknown) => e is T }): T | undefined {
 		const entity = this.entities[id]
 		if (entity && entityClass.is(entity)) {
 			return entity

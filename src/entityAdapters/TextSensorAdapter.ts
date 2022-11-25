@@ -6,11 +6,11 @@ import TextSensor from '../entities/TextSensorEntity'
 import { EntityPicker } from '../choices'
 
 export const TextSensorAdapter: EntityAdapter<TextSensor> = {
-	is: (instance: any): instance is TextSensor => {
+	is: (instance: unknown): instance is TextSensor => {
 		return instance instanceof TextSensor
 	},
 
-	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+	createActions: (_client: EsphomeClient): CompanionActionDefinitions => {
 		return {}
 	},
 

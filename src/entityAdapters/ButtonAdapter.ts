@@ -6,7 +6,7 @@ import Button from '../entities/ButtonEntity'
 import { EntityPicker } from '../choices'
 
 export const ButtonAdapter: EntityAdapter<Button> = {
-	is: (instance: any): instance is Button => {
+	is: (instance: unknown): instance is Button => {
 		return instance instanceof Button
 	},
 
@@ -26,7 +26,7 @@ export const ButtonAdapter: EntityAdapter<Button> = {
 		return actions
 	},
 
-	createFeedbacks: (client: EsphomeClient): CompanionFeedbackDefinitions => {
+	createFeedbacks: (_client: EsphomeClient): CompanionFeedbackDefinitions => {
 		return {}
 	},
 }

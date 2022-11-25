@@ -6,11 +6,11 @@ import Sensor from '../entities/SensorEntity'
 import { compareNumber, EntityPicker, NumberComparitorPicker, NumberValuePicker } from '../choices'
 
 export const SensorAdapter: EntityAdapter<Sensor> = {
-	is: (instance: any): instance is Sensor => {
+	is: (instance: unknown): instance is Sensor => {
 		return instance instanceof Sensor
 	},
 
-	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+	createActions: (_client: EsphomeClient): CompanionActionDefinitions => {
 		return {}
 	},
 

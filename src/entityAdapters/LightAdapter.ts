@@ -6,7 +6,7 @@ import Light from '../entities/LightEntity'
 import { EntityPicker, OnOffPicker, OnOffTogglePicker } from '../choices'
 
 export const LightAdapter: EntityAdapter<Light> = {
-	is: (instance: any): instance is Light => {
+	is: (instance: unknown): instance is Light => {
 		return instance instanceof Light
 	},
 

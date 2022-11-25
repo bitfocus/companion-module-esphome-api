@@ -6,7 +6,7 @@ import Switch from '../entities/SwitchEntity'
 import { EntityPicker, OnOffPicker, OnOffTogglePicker } from '../choices'
 
 export const SwitchAdapter: EntityAdapter<Switch> = {
-	is: (instance: any): instance is Switch => {
+	is: (instance: unknown): instance is Switch => {
 		return instance instanceof Switch
 	},
 

@@ -6,7 +6,7 @@ import Fan from '../entities/FanEntity'
 import { EntityPicker, OnOffPicker, OnOffTogglePicker } from '../choices'
 
 export const FanAdapter: EntityAdapter<Fan> = {
-	is: (instance: any): instance is Fan => {
+	is: (instance: unknown): instance is Fan => {
 		return instance instanceof Fan
 	},
 

@@ -6,11 +6,11 @@ import BinarySensor from '../entities/BinarySensorEntity'
 import { EntityPicker, OnOffPicker } from '../choices'
 
 export const BinarySensorAdapter: EntityAdapter<BinarySensor> = {
-	is: (instance: any): instance is BinarySensor => {
+	is: (instance: unknown): instance is BinarySensor => {
 		return instance instanceof BinarySensor
 	},
 
-	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+	createActions: (_client: EsphomeClient): CompanionActionDefinitions => {
 		return {}
 	},
 

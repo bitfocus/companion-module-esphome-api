@@ -6,7 +6,7 @@ import Cover from '../entities/CoverEntity'
 import { EntityPicker } from '../choices'
 
 export const CoverAdapter: EntityAdapter<Cover> = {
-	is: (instance: any): instance is Cover => {
+	is: (instance: unknown): instance is Cover => {
 		return instance instanceof Cover
 	},
 

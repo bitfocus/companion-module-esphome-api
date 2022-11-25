@@ -23,7 +23,7 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 			this.refreshCompanionInstances()
 		})
 
-		this.client.on('state', (entity) => {
+		this.client.on('state', (_entity) => {
 			this.checkFeedbacks()
 		})
 

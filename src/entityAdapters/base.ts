@@ -2,7 +2,7 @@ import { CompanionActionDefinitions, CompanionFeedbackDefinitions } from '@compa
 import { EsphomeClient } from '../esphomeClient'
 
 export interface EntityAdapter<T> {
-	is(instance: any): instance is T
+	is(instance: unknown): instance is T
 	createActions(client: EsphomeClient): CompanionActionDefinitions
 	createFeedbacks(client: EsphomeClient): CompanionFeedbackDefinitions
 }

@@ -5,7 +5,7 @@ import { PrefixedActionIds, PrefixedFeedbackIds } from '../util'
 import Select from '../entities/SelectEntity'
 
 export const SelectAdapter: EntityAdapter<Select> = {
-	is: (instance: any): instance is Select => {
+	is: (instance: unknown): instance is Select => {
 		return instance instanceof Select
 	},
 

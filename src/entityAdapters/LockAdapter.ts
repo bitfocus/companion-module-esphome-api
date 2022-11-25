@@ -7,7 +7,7 @@ import { EntityPicker } from '../choices'
 import { LockCommand, LockState } from '../proto/api'
 
 export const LockAdapter: EntityAdapter<Lock> = {
-	is: (instance: any): instance is Lock => {
+	is: (instance: unknown): instance is Lock => {
 		return instance instanceof Lock
 	},
 

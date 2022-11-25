@@ -27,7 +27,7 @@ export function getMessageTypeFromInstance<I extends object, T extends I>(messag
 	return messageType as IMessageType<I>
 }
 
-export function extractMessageId(messageType: IMessageType<any>): number {
+export function extractMessageId(messageType: IMessageType<object>): number {
 	const idField = messageType.options.id
 	if (!idField || typeof idField !== 'number') {
 		throw new Error('messageType does not contain an id')

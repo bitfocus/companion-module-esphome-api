@@ -7,7 +7,7 @@ import { EntityPicker } from '../choices'
 import { ClimateMode } from '../proto/api'
 
 export const ClimateAdapter: EntityAdapter<Climate> = {
-	is: (instance: any): instance is Climate => {
+	is: (instance: unknown): instance is Climate => {
 		return instance instanceof Climate
 	},
 
