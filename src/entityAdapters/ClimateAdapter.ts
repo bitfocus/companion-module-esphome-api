@@ -1,4 +1,4 @@
-import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, CompanionInputFieldDropdown, combineRgb } from '@companion-module/base'
+import { CompanionActionDefinitions, CompanionFeedbackDefinitions, CompanionInputFieldDropdown, combineRgb } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { FeedbackId, PrefixedActionIds } from '../util'
@@ -27,7 +27,7 @@ export const ClimateAdapter: EntityAdapter<Climate> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+	createFeedbacks: (client: EsphomeClient): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
 		const entities = client.getAll(ClimateAdapter)
 		if (entities.length) {

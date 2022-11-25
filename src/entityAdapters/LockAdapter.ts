@@ -1,4 +1,4 @@
-import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
+import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { PrefixedActionIds, FeedbackId } from '../util'
@@ -40,7 +40,7 @@ export const LockAdapter: EntityAdapter<Lock> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+	createFeedbacks: (client: EsphomeClient): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
 		const entities = client.getAll(LockAdapter)
 		if (entities.length) {

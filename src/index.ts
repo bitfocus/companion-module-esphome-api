@@ -38,7 +38,7 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 	}
 
 	public getConfigFields(): SomeCompanionConfigField[] {
-		return GetConfigFields(this)
+		return GetConfigFields()
 	}
 
 	public async init(config: DeviceConfig): Promise<void> {
@@ -56,7 +56,7 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 
 	private refreshCompanionInstances() {
 		this.setActionDefinitions(GetActionsList(this.client))
-		this.setFeedbackDefinitions(GetFeedbacksList(this, this.client))
+		this.setFeedbackDefinitions(GetFeedbacksList(this.client))
 	}
 
 	public async configUpdated(config: DeviceConfig): Promise<void> {

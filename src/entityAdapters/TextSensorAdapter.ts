@@ -1,4 +1,4 @@
-import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb, Regex } from '@companion-module/base'
+import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb, Regex } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { FeedbackId } from '../util'
@@ -14,7 +14,7 @@ export const TextSensorAdapter: EntityAdapter<TextSensor> = {
 		return {}
 	},
 
-	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+	createFeedbacks: (client: EsphomeClient): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
 		const entities = client.getAll(TextSensorAdapter)
 		if (entities.length) {

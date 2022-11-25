@@ -1,4 +1,4 @@
-import { InstanceBase, Regex, SomeCompanionConfigField } from '@companion-module/base'
+import { Regex, SomeCompanionConfigField } from '@companion-module/base'
 import { DEFAULT_PORT } from './connection/esphomeSocket'
 
 export interface DeviceConfig {
@@ -7,7 +7,7 @@ export interface DeviceConfig {
 	password?: string
 }
 
-export function GetConfigFields(instance: InstanceBase<any>): SomeCompanionConfigField[] {
+export function GetConfigFields(): SomeCompanionConfigField[] {
 	return [
 		{
 			type: 'textinput',

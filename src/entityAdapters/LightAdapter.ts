@@ -1,4 +1,4 @@
-import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
+import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { ActionId, FeedbackId, OnOffToggle } from '../util'
@@ -61,7 +61,7 @@ export const LightAdapter: EntityAdapter<Light> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+	createFeedbacks: (client: EsphomeClient): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
 		const entities = client.getAll(LightAdapter)
 		if (entities.length) {

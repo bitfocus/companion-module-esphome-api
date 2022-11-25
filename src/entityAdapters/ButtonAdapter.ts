@@ -1,4 +1,4 @@
-import { InstanceBase, CompanionActionDefinitions, CompanionFeedbackDefinitions } from '@companion-module/base'
+import { CompanionActionDefinitions, CompanionFeedbackDefinitions } from '@companion-module/base'
 import { EsphomeClient } from '../esphomeClient'
 import { EntityAdapter } from './base'
 import { ActionId } from '../util'
@@ -26,7 +26,7 @@ export const ButtonAdapter: EntityAdapter<Button> = {
 		return actions
 	},
 
-	createFeedbacks: (instance: InstanceBase<any>, client: EsphomeClient): CompanionFeedbackDefinitions => {
+	createFeedbacks: (client: EsphomeClient): CompanionFeedbackDefinitions => {
 		return {}
 	},
 }
