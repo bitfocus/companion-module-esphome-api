@@ -10,8 +10,8 @@
 	"scripts": {
 		"prepare": "husky install",
 		"build": "rimraf dist && yarn build:main",
-		"build:main": "tsc -p tsconfig.json",
-		"build:watch": "tsc -p tsconfig.json --watch",
+		"build:main": "tsc -p tsconfig.build.json",
+		"build:watch": "tsc -p tsconfig.build.json --watch",
 		"lint": "eslint .",
 		"lint-fix": "eslint --fix"
 	},
@@ -31,6 +31,9 @@
 		"*.{ts,tsx,js,jsx}": [
 			"yarn lint-fix"
 		]
+	},
+	"engines": {
+		"node": "^18.12"
 	},
 	"dependencies": {
 		"@companion-module/base": "~1.0",
