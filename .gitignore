@@ -3,3 +3,5 @@ package-lock.json
 dist/
 *.log
 .idea/
+/pkg
+/pkg.tgz
