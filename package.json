@@ -1,6 +1,6 @@
 {
 	"name": "companion-module-esphome-api",
-	"version": "4.0.0",
+	"version": "3.0.2",
 	"description": "ESPHome client module for Companion",
 	"keywords": [
 		"esphome"
