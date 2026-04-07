@@ -19,8 +19,8 @@ export class EsphomeClient extends EventEmitter {
 		}
 	}
 
-	connect(host: string, port?: number, password?: string, encryptionKey?: string) {
-		this.disconnect()
+	async connect(host: string, port?: number, password?: string, encryptionKey?: string) {
+		try {
 
 		// Create the esphome-client library instance
 		const clientConfig: any = {
@@ -29,7 +29,12 @@ export class EsphomeClient extends EventEmitter {
 		}
 
 		if (encryptionKey) {
-			clientConfig.psk = encryptionKey
+			try {
+				clientConfig.psk = Buffer.from(encryptionKey, 'hex')
+			} catch (error) {
+				process.stderr.write('Invalid encryption key format: ' + error + '\n')
+				// Skip setting psk if invalid
+			}
 		}
 
 		this.client = new EspHomeClient(clientConfig)
@@ -77,8 +82,12 @@ export class EsphomeClient extends EventEmitter {
 			this.emit('warn', message)
 		})
 
-		this.client.connect()
+			await this.client.connect()
 		this.emit('connected')
+		} catch (error) {
+			process.stderr.write('Error in connect: ' + error + '\n')
+			this.emit('error', error)
+		}
 	}
 
 	private addEntity(instance: EntityType) {

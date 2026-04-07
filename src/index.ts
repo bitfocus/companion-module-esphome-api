@@ -20,7 +20,11 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 		})
 
 		this.client.on('refreshEntities', () => {
-			this.refreshCompanionInstances()
+			try {
+				this.refreshCompanionInstances()
+			} catch (error) {
+				this.log('error', 'Refresh entities error: ' + (error as Error).message)
+			}
 		})
 
 		this.client.on('state', (_entity) => {
@@ -43,12 +47,17 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 
 	public async init(config: DeviceConfig): Promise<void> {
 		this.config = config
-		this.initClient(config)
+		try {
+			await this.initClient(config)
+		} catch (error) {
+			this.log('error', 'Init error: ' + (error as Error).message)
+			throw error
+		}
 	}
 
-	private initClient(config: DeviceConfig) {
+	private async initClient(config: DeviceConfig) {
 		if (config.host) {
-			this.client.connect(config.host, config.port, config.password, config.encryptionKey)
+			await this.client.connect(config.host, config.port, config.password, config.encryptionKey)
 		} else {
 			this.client.disconnect()
 		}
@@ -73,7 +82,7 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 		this.config = config
 
 		if (resetConnection === true) {
-			this.initClient(config);
+			await this.initClient(config);
 		}
 	}
 

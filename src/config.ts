@@ -35,7 +35,7 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 		{
 			type: 'textinput',
 			id: 'encryptionKey',
-			label: 'Encryption Key (base64)',
+			label: 'Encryption Key (hex)',
 			width: 12,
 		},
 	]
