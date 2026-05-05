@@ -27,8 +27,9 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 			}
 		})
 
-		this.client.on('state', (_entity) => {
+		this.client.on('state', () => {
 			this.checkFeedbacks()
+			this.updateVariableValues()
 		})
 
 		this.client.on('warn', (msg) => {
@@ -66,6 +67,60 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 	private refreshCompanionInstances() {
 		this.setActionDefinitions(GetActionsList(this.client))
 		this.setFeedbackDefinitions(GetFeedbacksList(this.client))
+		
+		// Set up variables from sensor entities
+		const variableDefinitions: any[] = []
+		
+		// Sensor variables
+		const sensors = this.client.getAll('sensor')
+		sensors.forEach((sensor) => {
+			variableDefinitions.push({
+				name: `${sensor.name} (Sensor)`,
+				variableId: `sensor_${sensor.id}`,
+			})
+		})
+		
+		// Binary sensor variables
+		const binarySensors = this.client.getAll('binary_sensor')
+		binarySensors.forEach((sensor) => {
+			variableDefinitions.push({
+				name: `${sensor.name} (Binary Sensor)`,
+				variableId: `binary_sensor_${sensor.id}`,
+			})
+		})
+		
+		// Text sensor variables
+		const textSensors = this.client.getAll('text_sensor')
+		textSensors.forEach((sensor) => {
+			variableDefinitions.push({
+				name: `${sensor.name} (Text Sensor)`,
+				variableId: `text_sensor_${sensor.id}`,
+			})
+		})
+		
+		if (variableDefinitions.length > 0) {
+			this.setVariableDefinitions(variableDefinitions)
+		}
+		
+		// Update variable values
+		this.updateVariableValues()
+	}
+
+	private updateVariableValues() {
+		const sensors = this.client.getAll('sensor')
+		sensors.forEach((sensor) => {
+			this.setVariableValues({ [`sensor_${sensor.id}`]: sensor.state?.state?.toString() || '' })
+		})
+		
+		const binarySensors = this.client.getAll('binary_sensor')
+		binarySensors.forEach((sensor) => {
+			this.setVariableValues({ [`binary_sensor_${sensor.id}`]: sensor.state?.state ? 'true' : 'false' })
+		})
+		
+		const textSensors = this.client.getAll('text_sensor')
+		textSensors.forEach((sensor) => {
+			this.setVariableValues({ [`text_sensor_${sensor.id}`]: sensor.state?.state?.toString() || '' })
+		})
 	}
 
 	public async configUpdated(config: DeviceConfig): Promise<void> {

@@ -1,116 +1,80 @@
 import { EventEmitter } from 'events'
-import { Entities, EntityType } from './entities'
 import { EspHomeClient } from 'esphome-client'
-import { E2ESocketAdapter } from './connection/e2eSocketAdapter'
+import { EntityManager, ManagedEntity } from './entityManager'
 
 export class EsphomeClient extends EventEmitter {
-	private adapter: E2ESocketAdapter | null = null
+	private manager: EntityManager | null = null
 	private client: InstanceType<typeof EspHomeClient> | null = null
-	private entities: { [id: string]: EntityType } = {}
 
 	constructor() {
 		super()
 	}
 
-	private removeAllEntities() {
-		for (const id in this.entities) {
-			this.entities[id].destroy()
-			delete this.entities[id]
-		}
-	}
-
 	async connect(host: string, port?: number, encryptionKey?: string) {
 		try {
+			const clientConfig: any = {
+				host,
+				port: port || 6053,
+			}
 
-		// Create the esphome-client library instance
-		const clientConfig: any = {
-			host,
-			port: port || 6053,
-		}
+			if (encryptionKey) {
+				const trimmedKey = encryptionKey.trim()
+				// ESPHome API expects base64-encoded 32-byte key
+				// User can provide either:
+				// 1. 64-char hex string (which we convert to base64)
+				// 2. Already base64-encoded string (32 bytes = 44 chars in base64)
+				const isHex = /^[0-9a-fA-F]{64}$/.test(trimmedKey)
 
-		if (encryptionKey) {
-			const trimmedKey = encryptionKey.trim()
-			try {
-				if (/^[0-9a-fA-F]{64}$/.test(trimmedKey)) {
+				if (isHex) {
+					// Convert 64-char hex to base64
 					clientConfig.psk = Buffer.from(trimmedKey, 'hex').toString('base64')
-				} else {
-					const decoded = Buffer.from(trimmedKey, 'base64')
-					if (decoded.length !== 32) {
-						throw new Error(`Decoded key is ${decoded.length} bytes, expected 32`)
+				} else if (/^[A-Za-z0-9+/]+=*$/.test(trimmedKey)) {
+					// Already base64, validate it
+					try {
+						const decoded = Buffer.from(trimmedKey, 'base64')
+						if (decoded.length === 32) {
+							clientConfig.psk = trimmedKey
+						}
+						// If not 32 bytes, don't set psk and let esphome-client handle it
+					} catch {
+						// Invalid base64, skip psk
 					}
-					clientConfig.psk = trimmedKey
 				}
-			} catch (error) {
-				process.stderr.write('Invalid encryption key provided: ' + error + '\n')
-				// Skip setting psk if invalid
+				// If neither hex nor valid base64, don't set psk - connection will be unencrypted
 			}
-		}
 
-		this.client = new EspHomeClient(clientConfig)
+			this.client = new EspHomeClient(clientConfig)
+			this.manager = new EntityManager(this.client)
 
-		// Create adapter to bridge between esphome-client and entity architecture
-		this.adapter = new E2ESocketAdapter(this.client)
-
-		// Subscribe all entity types
-		const adapter = this.adapter as any
-		Object.values(Entities).forEach((entity) => {
-			entity.subscribe(adapter, (e) => this.addEntity(e))
-		})
-
-		// Handle lifecycle events
-		this.adapter.on('listEntitiesDone', () => {
-			if (this.adapter) {
-				// Trigger SubscribeStatesRequest through adapter
-				const SubscribeStatesRequest = require('./proto/api').SubscribeStatesRequest
-				this.adapter.writeRequest(SubscribeStatesRequest, {})
+			this.manager.on('refreshEntities', () => {
 				this.emit('refreshEntities')
-			}
-		})
+			})
 
-		this.client.on('connect', () => {
-			this.removeAllEntities()
-			// Trigger ListEntitiesRequest through adapter
-			if (this.adapter) {
-				this.adapter.emitListEntitiesStart()
-			}
-		})
+			this.manager.on('state', () => {
+				this.emit('state')
+			})
 
-		;(this.client as any).on('disconnect', () => {
-			this.emit('disconnected')
-		})
+			this.manager.on('error', (error: any) => {
+				this.emit('error', error)
+			})
 
-		;(this.client as any).on('error', (error: any) => {
-			this.emit('error', error)
-		})
+			;(this.client as any).on('connect', () => {
+				this.emit('connected')
+			})
 
-		this.adapter.on('error', (error: any) => {
-			this.emit('error', error)
-		})
+			;(this.client as any).on('disconnect', () => {
+				this.emit('disconnected')
+			})
 
-		this.adapter.on('warn', (message: any) => {
-			this.emit('warn', message)
-		})
+			;(this.client as any).on('error', (error: any) => {
+				this.emit('error', error)
+			})
 
 			await this.client.connect()
-		this.emit('connected')
 		} catch (error) {
 			process.stderr.write('Error in connect: ' + error + '\n')
 			this.emit('error', error)
 		}
-	}
-
-	private addEntity(instance: EntityType) {
-		const id = instance.id
-		if (this.entities[id]) {
-			this.emit('warn', `Ignoring Duplicate Entity Id: ${id}`)
-		} else {
-			this.entities[id] = instance
-			instance.on('state', (entity) => this.onEntityStateChanged(entity))
-		}
-	}
-
-	private onEntityStateChanged(entity: EntityType) {
-		this.emit('state', entity)
 	}
 
 	disconnect() {
@@ -118,22 +82,34 @@ export class EsphomeClient extends EventEmitter {
 			this.client.disconnect()
 			this.client = null
 		}
-		if (this.adapter) {
-			this.adapter.destroy()
-			this.adapter = null
+		if (this.manager) {
+			this.manager.destroy()
+			this.manager = null
 		}
-		this.removeAllEntities()
 	}
 
-	public getAll<T extends EntityType>(entityClass: { is: (e: unknown) => e is T }): T[] {
-		return Object.values(this.entities).filter(entityClass.is)
+	public getAll<T extends ManagedEntity>(type: string): T[] {
+		if (!this.manager) return []
+		return this.manager.getAll(type) as T[]
 	}
 
-	public getEntity<T extends EntityType>(id: string, entityClass: { is: (e: unknown) => e is T }): T | undefined {
-		const entity = this.entities[id]
-		if (entity && entityClass.is(entity)) {
-			return entity
-		}
-		return undefined
+	public getEntity(id: string, type: string): ManagedEntity | undefined {
+		if (!this.manager) return undefined
+		return this.manager.getEntity(id, type)
+	}
+
+	public getEntityByKey(key: number): ManagedEntity | undefined {
+		if (!this.manager) return undefined
+		return this.manager.getEntityByKey(key)
+	}
+
+	public async switchSetState(key: number, state: boolean): Promise<void> {
+		if (!this.manager) return
+		return this.manager.switchSetState(key, state)
+	}
+
+	public async lightSetState(key: number, data: any): Promise<void> {
+		if (!this.manager) return
+		return this.manager.lightSetState(key, data)
 	}
 }
