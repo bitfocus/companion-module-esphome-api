@@ -4,7 +4,6 @@ import { DEFAULT_PORT } from './connection/esphomeSocket'
 export interface DeviceConfig {
 	host: string
 	port?: number
-	password?: string
 	encryptionKey?: string
 }
 
@@ -28,14 +27,8 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 		},
 		{
 			type: 'textinput',
-			id: 'password',
-			label: 'Password',
-			width: 12,
-		},
-		{
-			type: 'textinput',
 			id: 'encryptionKey',
-			label: 'Encryption Key (hex)',
+			label: 'Encryption Key (base64 or 64-char hex)',
 			width: 12,
 		},
 	]

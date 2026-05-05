@@ -19,7 +19,7 @@ export class EsphomeClient extends EventEmitter {
 		}
 	}
 
-	async connect(host: string, port?: number, password?: string, encryptionKey?: string) {
+	async connect(host: string, port?: number, encryptionKey?: string) {
 		try {
 
 		// Create the esphome-client library instance
@@ -29,10 +29,19 @@ export class EsphomeClient extends EventEmitter {
 		}
 
 		if (encryptionKey) {
+			const trimmedKey = encryptionKey.trim()
 			try {
-				clientConfig.psk = Buffer.from(encryptionKey, 'hex')
+				if (/^[0-9a-fA-F]{64}$/.test(trimmedKey)) {
+					clientConfig.psk = Buffer.from(trimmedKey, 'hex').toString('base64')
+				} else {
+					const decoded = Buffer.from(trimmedKey, 'base64')
+					if (decoded.length !== 32) {
+						throw new Error(`Decoded key is ${decoded.length} bytes, expected 32`)
+					}
+					clientConfig.psk = trimmedKey
+				}
 			} catch (error) {
-				process.stderr.write('Invalid encryption key format: ' + error + '\n')
+				process.stderr.write('Invalid encryption key provided: ' + error + '\n')
 				// Skip setting psk if invalid
 			}
 		}
