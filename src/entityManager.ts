@@ -23,8 +23,8 @@ export class EntityManager extends EventEmitter {
 			this.handleEntitiesDiscovered(entities)
 		})
 
-		;(this.client as any).on('state', (state: any) => {
-			this.handleStateUpdate(state)
+		;(this.client as any).on('telemetry', (data: any) => {
+			this.handleTelemetry(data)
 		})
 
 		;(this.client as any).on('error', (error: any) => {
@@ -40,7 +40,7 @@ export class EntityManager extends EventEmitter {
 				id: entity.objectId || `entity_${entity.key}`,
 				name: entity.name || 'Unknown',
 				key: entity.key,
-				type: entity.type || 'unknown',
+				type: String(entity.type || 'unknown').toLowerCase(),
 				state: null,
 			}
 			this.entities.set(entity.key, managed)
@@ -49,12 +49,14 @@ export class EntityManager extends EventEmitter {
 		this.emit('refreshEntities')
 	}
 
-	private handleStateUpdate(state: any) {
-		const entity = this.entities.get(state.key)
+	private handleTelemetry(data: any) {
+		if (!data || typeof data.key !== 'number') return
+
+		const entity = this.entities.get(data.key)
 		if (!entity) return
 
-		this.entityStates.set(state.key, state)
-		entity.state = state
+		this.entityStates.set(data.key, data)
+		entity.state = data
 		this.emit('state', entity)
 	}
 
@@ -75,12 +77,21 @@ export class EntityManager extends EventEmitter {
 		return this.entities.get(key)
 	}
 
-	async switchSetState(key: number, state: boolean): Promise<void> {
+	async switchSetState(entityId: string, state: boolean): Promise<void> {
 		return new Promise((resolve, reject) => {
 			try {
-				;(this.client as any).sendSwitchCommand?.(key, state)
+				const entity = Array.from(this.entities.values()).find((e) => e.id === entityId)
+				if (!entity) {
+					console.log(`[ESPHome] Entity not found for id: ${entityId}`)
+					reject(new Error(`Entity not found for id: ${entityId}`))
+					return
+				}
+				
+				console.log(`[ESPHome] Sending switch command: id=${entity.id}, state=${state}`)
+				;(this.client as any).sendSwitchCommand?.(entity.id, state)
 				resolve()
 			} catch (error) {
+				console.log(`[ESPHome] Switch command error: ${(error as Error).message}`)
 				reject(error)
 			}
 		})

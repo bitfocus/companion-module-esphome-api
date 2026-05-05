@@ -1,5 +1,6 @@
 import { CompanionActionDefinitions } from '@companion-module/base'
 import { EsphomeClient } from './esphomeClient'
+import { ActionId } from './util'
 
 export function GetActionsList(client: EsphomeClient): CompanionActionDefinitions {
 	const actions: CompanionActionDefinitions = {}
@@ -7,7 +8,7 @@ export function GetActionsList(client: EsphomeClient): CompanionActionDefinition
 	// Get all switch entities
 	const switches = client.getAll('switch')
 	if (switches.length > 0) {
-		actions['switch.set_state'] = {
+		actions[ActionId.SwitchState] = {
 			name: 'Set switch state',
 			options: [
 				{
@@ -30,8 +31,13 @@ export function GetActionsList(client: EsphomeClient): CompanionActionDefinition
 				},
 			],
 			callback: async (evt) => {
+				console.log(`[ESPHome] Switch action triggered: entity_id=${evt.options.entity_id}, state=${evt.options.state}`)
 				const entity = client.getEntity(evt.options.entity_id as string, 'switch')
-				if (!entity) return
+				console.log(`[ESPHome] Found entity: ${entity ? `key=${entity.key}, name=${entity.name}` : 'NOT FOUND'}`)
+				if (!entity) {
+					console.log(`[ESPHome] Available switches:`, client.getAll('switch').map(s => ({id: s.id, name: s.name, key: s.key})))
+					return
+				}
 
 				let newState: boolean
 				switch (evt.options.state) {
@@ -46,7 +52,8 @@ export function GetActionsList(client: EsphomeClient): CompanionActionDefinition
 						break
 				}
 
-				await client.switchSetState(entity.key, newState)
+				console.log(`[ESPHome] Setting switch ${entity.name} (id=${entity.id}, key=${entity.key}) to ${newState}`)
+				await client.switchSetState(entity.id, newState)
 			},
 		}
 	}

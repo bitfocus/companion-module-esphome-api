@@ -103,9 +103,9 @@ export class EsphomeClient extends EventEmitter {
 		return this.manager.getEntityByKey(key)
 	}
 
-	public async switchSetState(key: number, state: boolean): Promise<void> {
+	public async switchSetState(entityId: string, state: boolean): Promise<void> {
 		if (!this.manager) return
-		return this.manager.switchSetState(key, state)
+		return this.manager.switchSetState(entityId, state)
 	}
 
 	public async lightSetState(key: number, data: any): Promise<void> {
