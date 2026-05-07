@@ -36,11 +36,14 @@ export class EntityManager extends EventEmitter {
 		if (!Array.isArray(entities)) return
 
 		entities.forEach((entity) => {
+			const entityType = String(entity.type || 'unknown').toLowerCase()
+			// Match esphome-client ID format: "entityType-objectId"
+			const id = `${entityType}-${entity.objectId}`.toLowerCase()
 			const managed: ManagedEntity = {
-				id: entity.objectId || `entity_${entity.key}`,
+				id,
 				name: entity.name || 'Unknown',
 				key: entity.key,
-				type: String(entity.type || 'unknown').toLowerCase(),
+				type: entityType,
 				state: null,
 			}
 			this.entities.set(entity.key, managed)
