@@ -5,12 +5,24 @@ import { EntityManager, ManagedEntity } from './entityManager'
 export class EsphomeClient extends EventEmitter {
 	private manager: EntityManager | null = null
 	private client: InstanceType<typeof EspHomeClient> | null = null
+	private host?: string
+	private port?: number
+	private encryptionKey?: string
+	private reconnectTimer: NodeJS.Timeout | null = null
+	private manualDisconnect = false
+	private readonly reconnectIntervalMs = 15000
 
 	constructor() {
 		super()
 	}
 
 	async connect(host: string, port?: number, encryptionKey?: string) {
+		this.host = host
+		this.port = port
+		this.encryptionKey = encryptionKey
+		this.manualDisconnect = false
+		this.clearReconnectTimer()
+
 		try {
 			const clientConfig: any = {
 				host,
@@ -64,6 +76,10 @@ export class EsphomeClient extends EventEmitter {
 
 			;(this.client as any).on('disconnect', () => {
 				this.emit('disconnected')
+				if (!this.manualDisconnect) {
+					this.emit('warn', 'ESPHome disconnected, scheduling reconnect')
+					this.scheduleReconnect()
+				}
 			})
 
 			;(this.client as any).on('error', (error: any) => {
@@ -77,7 +93,37 @@ export class EsphomeClient extends EventEmitter {
 		}
 	}
 
+	private clearReconnectTimer() {
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer)
+			this.reconnectTimer = null
+		}
+	}
+
+	private scheduleReconnect() {
+		if (this.manualDisconnect || !this.host) {
+			return
+		}
+
+		if (this.reconnectTimer) {
+			return
+		}
+
+		this.reconnectTimer = setTimeout(async () => {
+			this.reconnectTimer = null
+			this.emit('warn', 'Attempting to reconnect to ESPHome device')
+			try {
+				await this.connect(this.host!, this.port, this.encryptionKey)
+			} catch (error) {
+				this.emit('error', error)
+				this.scheduleReconnect()
+			}
+		}, this.reconnectIntervalMs)
+	}
+
 	disconnect() {
+		this.manualDisconnect = true
+		this.clearReconnectTimer()
 		if (this.client) {
 			this.client.disconnect()
 			this.client = null
