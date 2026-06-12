@@ -3,7 +3,7 @@
 	"name": "esphome-api",
 	"shortname": "esphome",
 	"description": "ESPHome client module for Companion",
-	"version": "3.0.6",
+	"version": "3.0.5",
 	"license": "MIT",
 	"repository": "git+https://github.com/bitfocus/companion-module-esphome-api.git",
 	"bugs": "https://github.com/bitfocus/companion-module-esphome-api/issues",

@@ -20,11 +20,16 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 		})
 
 		this.client.on('refreshEntities', () => {
-			this.refreshCompanionInstances()
+			try {
+				this.refreshCompanionInstances()
+			} catch (error) {
+				this.log('error', 'Refresh entities error: ' + (error as Error).message)
+			}
 		})
 
-		this.client.on('state', (_entity) => {
+		this.client.on('state', () => {
 			this.checkFeedbacks()
+			this.updateVariableValues()
 		})
 
 		this.client.on('warn', (msg) => {
@@ -43,12 +48,17 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 
 	public async init(config: DeviceConfig): Promise<void> {
 		this.config = config
-		this.initClient(config)
+		try {
+			await this.initClient(config)
+		} catch (error) {
+			this.log('error', 'Init error: ' + (error as Error).message)
+			throw error
+		}
 	}
 
-	private initClient(config: DeviceConfig) {
+	private async initClient(config: DeviceConfig) {
 		if (config.host) {
-			this.client.connect(config.host, config.port, config.password)
+			await this.client.connect(config.host, config.port, config.encryptionKey)
 		} else {
 			this.client.disconnect()
 		}
@@ -57,6 +67,60 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 	private refreshCompanionInstances() {
 		this.setActionDefinitions(GetActionsList(this.client))
 		this.setFeedbackDefinitions(GetFeedbacksList(this.client))
+		
+		// Set up variables from sensor entities
+		const variableDefinitions: any[] = []
+		
+		// Sensor variables
+		const sensors = this.client.getAll('sensor')
+		sensors.forEach((sensor) => {
+			variableDefinitions.push({
+				name: `${sensor.name} (Sensor)`,
+				variableId: `sensor_${sensor.id}`,
+			})
+		})
+		
+		// Binary sensor variables
+		const binarySensors = this.client.getAll('binary_sensor')
+		binarySensors.forEach((sensor) => {
+			variableDefinitions.push({
+				name: `${sensor.name} (Binary Sensor)`,
+				variableId: `binary_sensor_${sensor.id}`,
+			})
+		})
+		
+		// Text sensor variables
+		const textSensors = this.client.getAll('text_sensor')
+		textSensors.forEach((sensor) => {
+			variableDefinitions.push({
+				name: `${sensor.name} (Text Sensor)`,
+				variableId: `text_sensor_${sensor.id}`,
+			})
+		})
+		
+		if (variableDefinitions.length > 0) {
+			this.setVariableDefinitions(variableDefinitions)
+		}
+		
+		// Update variable values
+		this.updateVariableValues()
+	}
+
+	private updateVariableValues() {
+		const sensors = this.client.getAll('sensor')
+		sensors.forEach((sensor) => {
+			this.setVariableValues({ [`sensor_${sensor.id}`]: sensor.state?.state?.toString() || '' })
+		})
+		
+		const binarySensors = this.client.getAll('binary_sensor')
+		binarySensors.forEach((sensor) => {
+			this.setVariableValues({ [`binary_sensor_${sensor.id}`]: sensor.state?.state ? 'true' : 'false' })
+		})
+		
+		const textSensors = this.client.getAll('text_sensor')
+		textSensors.forEach((sensor) => {
+			this.setVariableValues({ [`text_sensor_${sensor.id}`]: sensor.state?.state?.toString() || '' })
+		})
 	}
 
 	public async configUpdated(config: DeviceConfig): Promise<void> {
@@ -65,14 +129,14 @@ class ESPHomeInstance extends InstanceBase<DeviceConfig> {
 		if (!this.config
 			|| this.config.host != config.host
 			|| this.config.port != config.port
-			|| this.config.password != config.password) {
+			|| this.config.encryptionKey != config.encryptionKey) {
 			resetConnection = true
 		}
 
 		this.config = config
 
 		if (resetConnection === true) {
-			this.initClient(config);
+			await this.initClient(config);
 		}
 	}
 
