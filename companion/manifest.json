@@ -15,10 +15,10 @@
 	],
 	"legacyIds": [],
 	"runtime": {
-		"type": "node20",
+		"type": "node18",
 		"api": "nodejs-ipc",
 		"apiVersion": "1.0.0",
-		"entrypoint": "main.js"
+		"entrypoint": "../main.js"
 	},
 	"manufacturer": "ESPHome",
 	"products": ["API"],
