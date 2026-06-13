@@ -34,7 +34,7 @@
 		]
 	},
 	"engines": {
-		"node": "^18.12"
+		"node": "^20.0"
 	},
 	"dependencies": {
 		"@companion-module/base": "~1.0",
@@ -47,7 +47,7 @@
 	"devDependencies": {
 		"@companion-module/tools": "^1.5.2",
 		"@protobuf-ts/plugin": "^2.4.0",
-		"@types/node": "^18.11.11",
+		"@types/node": "^20.0.0",
 		"husky": "^7.0.4",
 		"lint-staged": "^12.3.5",
 		"ts-loader": "^9.5.7",
