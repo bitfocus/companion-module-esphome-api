@@ -13,6 +13,8 @@ jobs:
       packages: read
 
     uses: bitfocus/actions/.github/workflows/module-checks.yaml@main
+    with:
+      node-version: '20'
     # with:
     #   upload-artifact: true # uncomment this to upload the built package as an artifact to this workflow that you can download and share with others
 

@@ -15,7 +15,7 @@
 	],
 	"legacyIds": [],
 	"runtime": {
-		"type": "node18",
+		"type": "node20",
 		"api": "nodejs-ipc",
 		"apiVersion": "1.0.0",
 		"entrypoint": "main.js"
