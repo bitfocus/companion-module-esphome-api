@@ -36,7 +36,7 @@
 		"node": "^18.12"
 	},
 	"dependencies": {
-		"@companion-module/base": "~1.0",
+		"@companion-module/base": "~1.4.3",
 		"@protobuf-ts/runtime": "^2.4.0",
 		"@protobuf-ts/runtime-rpc": "^2.4.0"
 	},
