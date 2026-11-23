@@ -3,6 +3,7 @@ import { ButtonEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
 import { EntityAdapter } from './base.js'
 import { ActionId } from '../util.js'
+import { EntityPicker } from '../choices.js'
 
 export const ButtonAdapter: EntityAdapter<ButtonEntity> = {
 	is: (instance: unknown): instance is ButtonEntity => {
@@ -11,25 +12,15 @@ export const ButtonAdapter: EntityAdapter<ButtonEntity> = {
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}
-		const buttonEntities = client.getAvailableEntityIds()['button'] || []
-		if (buttonEntities.length) {
-			buttonEntities.forEach((entityId: string) => {
-				actions[ActionId.ButtonPush] = {
-					name: 'Push Button',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'Entity',
-							id: 'entity_id',
-							default: entityId,
-							choices: [{ id: entityId, label: entityId }],
-						},
-					],
-					callback: (evt): void => {
-						console.log('[ButtonAdapter] Push button:', evt.options.entity_id)
-					},
-				}
-			})
+		const buttons = client.getEntities('button')
+		if (buttons.length) {
+			actions[ActionId.ButtonPush] = {
+				name: 'Push Button',
+				options: [EntityPicker(buttons)],
+				callback: (evt): void => {
+					client.command(evt.options.entity_id as string, {})
+				},
+			}
 		}
 		return actions
 	},

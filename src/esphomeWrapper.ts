@@ -207,9 +207,7 @@ export class EsphomeWrapper {
 	command(entityId: string, options: Record<string, unknown>): void {
 		if (!this._client) return
 		console.log('[ESPHome] Command:', entityId, options)
-		this._client.commandAndAwait(entityId as any, options).catch((err) => {
-			console.error('[ESPHome] Command failed:', err)
-		})
+		this._client.command(entityId as any, options)
 	}
 
 	latest(entityId: string): any {
