@@ -1,8 +1,9 @@
-import { CompanionActionDefinitions, CompanionFeedbackDefinitions } from '@companion-module/base'
+import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { TextSensorEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
 import { EntityAdapter } from './base.js'
 import { FeedbackId } from '../util.js'
+import { EntityPicker } from '../choices.js'
 
 export const TextSensorAdapter: EntityAdapter<TextSensorEntity> = {
 	is: (instance: unknown): instance is TextSensorEntity => {
@@ -15,21 +16,14 @@ export const TextSensorAdapter: EntityAdapter<TextSensorEntity> = {
 
 	createFeedbacks: (client: EsphomeWrapper): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
-		const textSensors = client.getAvailableEntityIds()['text_sensor'] || []
+		const textSensors = client.getEntities('text_sensor')
 		if (textSensors.length) {
 			feedbacks[FeedbackId.TextSensorValue] = {
-				type: 'value',
+				type: 'boolean',
 				name: 'Change from text sensor value',
 				description: 'True when the text sensor value matches the rule',
-				options: [
-					{
-						type: 'dropdown',
-						label: 'Entity',
-						id: 'entity_id',
-						default: textSensors[0],
-						choices: textSensors.map((e) => ({ id: e, label: e })),
-					},
-				],
+				options: [EntityPicker(textSensors), { type: 'textinput', label: 'Value', id: 'value', default: '' }],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
 				callback: (feedback): boolean => {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event) return false
