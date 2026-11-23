@@ -48,7 +48,7 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 				callback: (feedback): boolean => {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event) return false
-					const currentMode = event.mode ?? ClimateMode.Off
+					const currentMode = event.mode ?? ClimateMode.OFF
 					return currentMode === feedback.options.mode
 				},
 			}
@@ -64,7 +64,7 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 			const modes =
 				climateEntity.supportedModes && climateEntity.supportedModes.length
 					? [...climateEntity.supportedModes]
-					: [ClimateMode.Off]
+					: [ClimateMode.OFF]
 			for (const mode of modes) {
 				const label = ClimateModeLabels[mode] ?? String(mode)
 				const id = `preset_${entityVariableId(climateEntity.id)}_mode_${mode}`

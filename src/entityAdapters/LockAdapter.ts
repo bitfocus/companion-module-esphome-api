@@ -23,19 +23,32 @@ export const LockAdapter: EntityAdapter<LockEntity> = {
 			if (lockEntity.supportsOpen) {
 				choices.push({ id: LockCommand.OPEN, label: 'Open' })
 			}
+			const actionOptions: any[] = [
+				{
+					type: 'dropdown',
+					label: 'State',
+					id: 'state',
+					default: LockCommand.LOCK,
+					choices,
+				},
+			]
+			if (lockEntity.requiresCode) {
+				actionOptions.push({
+					type: 'textinput',
+					label: 'Code',
+					id: 'code',
+					default: '',
+				})
+			}
 			actions[PrefixedActionIds.LockCommand + lockEntity.id] = {
 				name: `${lockEntity.name || lockEntity.id}: Set lock state`,
-				options: [
-					{
-						type: 'dropdown',
-						label: 'State',
-						id: 'state',
-						default: LockCommand.LOCK,
-						choices,
-					},
-				],
+				options: actionOptions,
 				callback: (evt): void => {
-					client.command(lockEntity.id, { command: Number(evt.options.state) })
+					const cmd: Record<string, unknown> = { command: Number(evt.options.state) }
+					if (lockEntity.requiresCode && evt.options.code) {
+						cmd.code = evt.options.code
+					}
+					client.command(lockEntity.id, cmd)
 				},
 			}
 		}

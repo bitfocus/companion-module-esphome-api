@@ -1,6 +1,8 @@
 import type { CompanionVariableDefinitions, CompanionVariableValue } from '@companion-module/base'
+import { LockState } from 'esphome-client'
 import type ESPHomeInstance from './main.js'
 import type { EsphomeWrapper } from './esphomeWrapper.js'
+import { LockStateLabels } from './choices.js'
 
 export type VariablesSchema = Record<string, CompanionVariableValue | undefined>
 
@@ -31,8 +33,10 @@ function formatEntityVariableValue(entity: any, event: any): CompanionVariableVa
 			return event.state !== undefined ? String(event.state) : undefined
 		case 'cover':
 			return event.position !== undefined ? Number(event.position) : undefined
-		case 'lock':
-			return event.state !== undefined ? Number(event.state) : undefined
+		case 'lock': {
+			const state = event.state !== undefined ? Number(event.state) : LockState.NONE
+			return LockStateLabels[state] ?? String(state)
+		}
 		case 'climate':
 			return event.mode !== undefined ? String(event.mode) : undefined
 		default:
