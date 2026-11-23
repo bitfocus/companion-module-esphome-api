@@ -1,6 +1,8 @@
 export enum ActionId {
 	ButtonPush = 'button_push',
 	FanState = 'fan_state',
+	FanOscillating = 'fan_oscillating',
+	FanDirection = 'fan_direction',
 	LightState = 'light_state',
 	LightBrightness = 'light_brightness',
 	SwitchState = 'switch_state',
@@ -14,6 +16,8 @@ export enum ActionId {
 export enum PrefixedActionIds {
 	ClimateMode = 'climate_mode_id_',
 	CoverPosition = 'cover_position_id_',
+	FanSpeed = 'fan_speed_id_',
+	FanPreset = 'fan_preset_id_',
 	LightEffect = 'light_effect_id_',
 	LockCommand = 'lock_command_id_',
 	NumberState = 'number_state_id_',
@@ -25,6 +29,9 @@ export enum FeedbackId {
 	ClimateMode = 'climate_mode',
 	CoverOpen = 'cover_open',
 	FanState = 'fan_state',
+	FanSpeed = 'fan_speed',
+	FanOscillating = 'fan_oscillating',
+	FanDirection = 'fan_direction',
 	LightState = 'light_on_state',
 	LightBrightness = 'light_brightness',
 	LightColor = 'light_color',
