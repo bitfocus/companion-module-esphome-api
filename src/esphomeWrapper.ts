@@ -12,15 +12,10 @@ export class EsphomeWrapper {
 	// Internal event emitter for wrapper events
 	private _events = new Map<string, Array<(...args: any[]) => void | Promise<void>>>()
 
-	constructor(_host?: string, _port?: number, _psk?: string) {
-		console.log('[ESPHome] EsphomeWrapper initialized')
-	}
+	constructor(_host?: string, _port?: number, _psk?: string) {}
 
 	async connect(host: string, port: number | undefined, psk: string | undefined): Promise<void> {
-		console.log('[ESPHome] Connecting:', { host, port: port || 6053, pskPresent: !!psk })
-
 		if (this._client) {
-			console.log('[ESPHome] Disconnecting existing client')
 			this._client.disconnect()
 			this._client = null
 		}
@@ -30,8 +25,8 @@ export class EsphomeWrapper {
 			port: port || 6053,
 			psk: psk || undefined,
 			logger: {
-				debug: (msg: string) => console.debug('[ESPHome]', msg),
-				info: (msg: string) => console.info('[ESPHome]', msg),
+				debug: () => {},
+				info: () => {},
 				warn: (msg: string) => console.warn('[ESPHome]', msg),
 				error: (msg: string) => console.error('[ESPHome]', msg),
 			},
@@ -41,7 +36,6 @@ export class EsphomeWrapper {
 
 		try {
 			await client.connect()
-			console.log('[ESPHome] client.connect() resolved')
 		} catch (err: any) {
 			console.error('[ESPHome] Failed to connect:', err?.message ?? err)
 			if (this._client === client) {
@@ -52,7 +46,6 @@ export class EsphomeWrapper {
 	}
 
 	disconnect(): void {
-		console.log('[ESPHome] Disconnecting')
 		if (this._client) {
 			this._client.disconnect()
 			this._client = null
@@ -62,10 +55,8 @@ export class EsphomeWrapper {
 
 	private setupEventListeners(client: EspHomeClient): void {
 		// Listen for entity discovery
-		client.on('entities', (snapshot: Entity[]) => {
+		client.on('entities', (_snapshot: Entity[]) => {
 			if (this._client !== client) return
-			console.log('[ESPHome] Entities discovered:', snapshot.length, 'entities')
-			this.refreshEntityDiscovery(snapshot)
 			this.emit('refreshEntities')
 		})
 
@@ -113,81 +104,6 @@ export class EsphomeWrapper {
 		this.emit('state', event.entity, event.type)
 	}
 
-	private refreshEntityDiscovery(entities: Entity[]): void {
-		console.log('[ESPHome] Refreshing entity discovery with', entities.length, 'entities')
-
-		const lights: any[] = []
-		const sensors: any[] = []
-		const binarySensors: any[] = []
-		const buttons: any[] = []
-		const climate: any[] = []
-		const covers: any[] = []
-		const fans: any[] = []
-		const locks: any[] = []
-		const switches: any[] = []
-		const numbers: any[] = []
-		const selects: any[] = []
-		const textSensors: any[] = []
-
-		entities.forEach((entity: Entity) => {
-			if (!entity) return
-
-			switch (entity.type) {
-				case 'light':
-					lights.push(entity)
-					break
-				case 'sensor':
-					sensors.push(entity)
-					break
-				case 'binary_sensor':
-					binarySensors.push(entity)
-					break
-				case 'button':
-					buttons.push(entity)
-					break
-				case 'climate':
-					climate.push(entity)
-					break
-				case 'cover':
-					covers.push(entity)
-					break
-				case 'fan':
-					fans.push(entity)
-					break
-				case 'lock':
-					locks.push(entity)
-					break
-				case 'switch':
-					switches.push(entity)
-					break
-				case 'number':
-					numbers.push(entity)
-					break
-				case 'select':
-					selects.push(entity)
-					break
-				case 'text_sensor':
-					textSensors.push(entity)
-					break
-			}
-		})
-
-		console.log('[ESPHome] Entity counts:', {
-			lights: lights.length,
-			sensors: sensors.length,
-			binarySensors: binarySensors.length,
-			buttons: buttons.length,
-			climate: climate.length,
-			covers: covers.length,
-			fans: fans.length,
-			locks: locks.length,
-			switches: switches.length,
-			numbers: numbers.length,
-			selects: selects.length,
-			textSensors: textSensors.length,
-		})
-	}
-
 	getAvailableEntityIds(): Record<string, string[]> {
 		if (!this._client) return {}
 		return this._client.getAvailableEntityIds()
@@ -206,7 +122,6 @@ export class EsphomeWrapper {
 
 	command(entityId: string, options: Record<string, unknown>): void {
 		if (!this._client) return
-		console.log('[ESPHome] Command:', entityId, options)
 		this._client.command(entityId as any, options)
 	}
 
@@ -337,7 +252,6 @@ export class EsphomeWrapper {
 
 	setState(entityId: string, value: Record<string, unknown>): void {
 		if (!this._client) return
-		console.log('[ESPHome] Setting state for', entityId, '=', value)
 		this._client.commandAndAwait(entityId as any, value).catch((err) => {
 			console.error('[ESPHome] State set failed:', err)
 		})
@@ -348,14 +262,12 @@ export class EsphomeWrapper {
 	}
 
 	on(eventName: string, callback: (...args: any[]) => void | Promise<void>): void {
-		console.log('[ESPHome] Registering event listener for:', eventName)
 		this._events.set(eventName, [...(this._events.get(eventName) || []), callback])
 	}
 
 	emit(eventName: string, ...args: any[]): void {
 		const handlers = this._events.get(eventName)
 		if (handlers) {
-			console.log('[ESPHome] Emitting event:', eventName, 'with', handlers.length, 'handlers')
 			for (const handler of handlers) {
 				void handler(...args)
 			}
