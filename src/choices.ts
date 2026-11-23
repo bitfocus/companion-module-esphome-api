@@ -4,7 +4,7 @@ import {
 	CompanionInputFieldNumber,
 	JsonValue,
 } from '@companion-module/base'
-import { ClimateMode, LockState } from 'esphome-client'
+import { ClimateAction, ClimateFanMode, ClimateMode, ClimatePreset, ClimateSwingMode, LockState } from 'esphome-client'
 import { OnOffToggle } from './util.js'
 
 // ============================================================================
@@ -142,6 +142,46 @@ export const ClimateModeLabels: Record<number, string> = {
 	[ClimateMode.FAN_ONLY]: 'Fan Only',
 	[ClimateMode.DRY]: 'Dry',
 	[ClimateMode.AUTO]: 'Auto',
+}
+
+export const ClimateActionLabels: Record<number, string> = {
+	[ClimateAction.OFF]: 'Off',
+	[ClimateAction.COOLING]: 'Cooling',
+	[ClimateAction.HEATING]: 'Heating',
+	[ClimateAction.IDLE]: 'Idle',
+	[ClimateAction.DRYING]: 'Drying',
+	[ClimateAction.FAN]: 'Fan',
+}
+
+export const ClimateFanModeLabels: Record<number, string> = {
+	[ClimateFanMode.ON]: 'On',
+	[ClimateFanMode.OFF]: 'Off',
+	[ClimateFanMode.AUTO]: 'Auto',
+	[ClimateFanMode.LOW]: 'Low',
+	[ClimateFanMode.MEDIUM]: 'Medium',
+	[ClimateFanMode.HIGH]: 'High',
+	[ClimateFanMode.MIDDLE]: 'Middle',
+	[ClimateFanMode.FOCUS]: 'Focus',
+	[ClimateFanMode.DIFFUSE]: 'Diffuse',
+	[ClimateFanMode.QUIET]: 'Quiet',
+}
+
+export const ClimatePresetLabels: Record<number, string> = {
+	[ClimatePreset.NONE]: 'None',
+	[ClimatePreset.HOME]: 'Home',
+	[ClimatePreset.AWAY]: 'Away',
+	[ClimatePreset.BOOST]: 'Boost',
+	[ClimatePreset.COMFORT]: 'Comfort',
+	[ClimatePreset.ECO]: 'Eco',
+	[ClimatePreset.SLEEP]: 'Sleep',
+	[ClimatePreset.ACTIVITY]: 'Activity',
+}
+
+export const ClimateSwingModeLabels: Record<number, string> = {
+	[ClimateSwingMode.OFF]: 'Off',
+	[ClimateSwingMode.BOTH]: 'Both',
+	[ClimateSwingMode.VERTICAL]: 'Vertical',
+	[ClimateSwingMode.HORIZONTAL]: 'Horizontal',
 }
 
 export function ClimateModePicker(supportedModes: number[]): CompanionInputFieldDropdown {

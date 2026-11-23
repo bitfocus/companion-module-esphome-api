@@ -17,6 +17,12 @@ export enum ActionId {
 
 export enum PrefixedActionIds {
 	ClimateMode = 'climate_mode_id_',
+	ClimateTargetTemp = 'climate_target_temp_id_',
+	ClimateTargetTempRange = 'climate_target_temp_range_id_',
+	ClimateFanMode = 'climate_fan_mode_id_',
+	ClimatePreset = 'climate_preset_id_',
+	ClimateSwingMode = 'climate_swing_mode_id_',
+	ClimateTargetHumidity = 'climate_target_humidity_id_',
 	CoverPosition = 'cover_position_id_',
 	FanSpeed = 'fan_speed_id_',
 	FanPreset = 'fan_preset_id_',
@@ -29,6 +35,9 @@ export enum PrefixedActionIds {
 export enum FeedbackId {
 	BinarySensorState = 'binary_sensor_state',
 	ClimateMode = 'climate_mode',
+	ClimateAction = 'climate_action',
+	ClimateCurrentTemp = 'climate_current_temp',
+	ClimateTargetTemp = 'climate_target_temp',
 	CoverOpen = 'cover_open',
 	CoverPosition = 'cover_position',
 	CoverOperation = 'cover_operation',
