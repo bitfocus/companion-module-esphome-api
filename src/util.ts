@@ -1,5 +1,7 @@
 export enum ActionId {
 	ButtonPush = 'button_push',
+	CoverStop = 'cover_stop',
+	CoverTilt = 'cover_tilt',
 	FanState = 'fan_state',
 	FanOscillating = 'fan_oscillating',
 	FanDirection = 'fan_direction',
@@ -28,6 +30,8 @@ export enum FeedbackId {
 	BinarySensorState = 'binary_sensor_state',
 	ClimateMode = 'climate_mode',
 	CoverOpen = 'cover_open',
+	CoverPosition = 'cover_position',
+	CoverOperation = 'cover_operation',
 	FanState = 'fan_state',
 	FanSpeed = 'fan_speed',
 	FanOscillating = 'fan_oscillating',
