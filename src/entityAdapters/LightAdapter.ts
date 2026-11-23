@@ -2,12 +2,14 @@ import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } 
 import { ColorMode, LightEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
 import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
-import { ActionId, FeedbackId, OnOffToggle } from '../util.js'
+import { ActionId, FeedbackId, OnOffToggle, PrefixedActionIds, PrefixedFeedbackIds } from '../util.js'
 import { EntityPicker, OnOffPicker, OnOffTogglePicker } from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
 const COLOR_MODE_BRIGHTNESS_BIT = 2
+const COLOR_MODE_WHITE_BIT = 4
 const COLOR_MODE_COLOR_TEMP_BIT = 8
+const COLOR_MODE_COLD_WARM_WHITE_BIT = 16
 const COLOR_MODE_RGB_BIT = 32
 
 function hasColorModeBit(entity: unknown, bit: number): boolean {
@@ -20,12 +22,38 @@ function supportsBrightness(entity: unknown): boolean {
 	return hasColorModeBit(entity, COLOR_MODE_BRIGHTNESS_BIT)
 }
 
+function supportsWhite(entity: unknown): boolean {
+	return hasColorModeBit(entity, COLOR_MODE_WHITE_BIT)
+}
+
 function supportsColorTemp(entity: unknown): boolean {
 	return hasColorModeBit(entity, COLOR_MODE_COLOR_TEMP_BIT)
 }
 
+function supportsColdWarmWhite(entity: unknown): boolean {
+	return hasColorModeBit(entity, COLOR_MODE_COLD_WARM_WHITE_BIT)
+}
+
 function supportsRgb(entity: unknown): boolean {
 	return hasColorModeBit(entity, COLOR_MODE_RGB_BIT)
+}
+
+const transitionOption = {
+	type: 'number' as const,
+	label: 'Transition (ms)',
+	id: 'transition',
+	default: 0,
+	min: 0,
+	max: 60000,
+	step: 100,
+}
+
+function withTransition(cmd: Record<string, unknown>, transition: unknown): Record<string, unknown> {
+	const ms = Number(transition ?? 0)
+	if (ms > 0) {
+		cmd.transitionLength = ms
+	}
+	return cmd
 }
 
 function parseColorToRgb(color: unknown): { r: number; g: number; b: number } | undefined {
@@ -69,19 +97,21 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 		const brightnessLights = lights.filter(supportsBrightness)
 		const rgbLights = lights.filter(supportsRgb)
 		const colorTempLights = lights.filter(supportsColorTemp)
+		const whiteLights = lights.filter(supportsWhite)
+		const coldWarmWhiteLights = lights.filter(supportsColdWarmWhite)
 
 		if (lights.length) {
 			// State action - On/Off/Toggle
 			actions[ActionId.LightState] = {
 				name: 'Set light state',
-				options: [EntityPicker(lights), OnOffTogglePicker()],
+				options: [EntityPicker(lights), OnOffTogglePicker(), transitionOption],
 				callback: (evt): void => {
 					const entityId = evt.options.entity_id as string
 					const nextState =
 						evt.options.state === OnOffToggle.Toggle
 							? !client.latest(entityId)?.state
 							: evt.options.state === OnOffToggle.On
-					client.command(entityId, { state: nextState })
+					client.command(entityId, withTransition({ state: nextState }, evt.options.transition))
 				},
 			}
 		}
@@ -93,12 +123,19 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 				options: [
 					EntityPicker(brightnessLights),
 					{ type: 'number', label: 'Brightness (%)', id: 'brightness', default: 50, min: 0, max: 100, step: 1 },
+					transitionOption,
 				],
 				callback: (evt): void => {
-					client.command(evt.options.entity_id as string, {
-						state: true,
-						brightness: Number(evt.options.brightness) / 100,
-					})
+					client.command(
+						evt.options.entity_id as string,
+						withTransition(
+							{
+								state: true,
+								brightness: Number(evt.options.brightness) / 100,
+							},
+							evt.options.transition,
+						),
+					)
 				},
 			}
 		}
@@ -110,14 +147,21 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 				options: [
 					EntityPicker(rgbLights),
 					{ type: 'colorpicker', label: 'Color', id: 'color', default: combineRgb(255, 255, 255) },
+					transitionOption,
 				],
 				callback: (evt): void => {
 					const rgb = parseColorToRgb(evt.options.color)
 					if (!rgb) return
-					client.command(evt.options.entity_id as string, {
-						state: true,
-						rgb,
-					})
+					client.command(
+						evt.options.entity_id as string,
+						withTransition(
+							{
+								state: true,
+								rgb,
+							},
+							evt.options.transition,
+						),
+					)
 				},
 			}
 
@@ -129,34 +173,129 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 					{ type: 'number', label: 'Red', id: 'red', default: 128, min: 0, max: 255, step: 1 },
 					{ type: 'number', label: 'Green', id: 'green', default: 128, min: 0, max: 255, step: 1 },
 					{ type: 'number', label: 'Blue', id: 'blue', default: 128, min: 0, max: 255, step: 1 },
+					transitionOption,
 				],
 				callback: (evt): void => {
-					client.command(evt.options.entity_id as string, {
-						state: true,
-						rgb: {
-							r: Number(evt.options.red) / 255,
-							g: Number(evt.options.green) / 255,
-							b: Number(evt.options.blue) / 255,
-						},
-					})
+					client.command(
+						evt.options.entity_id as string,
+						withTransition(
+							{
+								state: true,
+								rgb: {
+									r: Number(evt.options.red) / 255,
+									g: Number(evt.options.green) / 255,
+									b: Number(evt.options.blue) / 255,
+								},
+							},
+							evt.options.transition,
+						),
+					)
 				},
 			}
 		}
 
 		if (colorTempLights.length) {
+			const minMireds = Math.min(...colorTempLights.map((l) => (l as unknown as LightEntity).minMireds ?? 153))
+			const maxMireds = Math.max(...colorTempLights.map((l) => (l as unknown as LightEntity).maxMireds ?? 500))
+			const defaultMireds = Math.min(maxMireds, Math.max(minMireds, 370))
+
 			// Color Temperature action
 			actions[ActionId.LightColorTemp] = {
 				name: 'Set light color temperature (mireds)',
 				options: [
 					EntityPicker(colorTempLights),
-					{ type: 'number', label: 'Color Temperature', id: 'colorTemp', default: 370, min: 153, max: 500, step: 1 },
+					{
+						type: 'number',
+						label: 'Color Temperature',
+						id: 'colorTemp',
+						default: defaultMireds,
+						min: minMireds,
+						max: maxMireds,
+						step: 1,
+					},
+					transitionOption,
 				],
 				callback: (evt): void => {
-					client.command(evt.options.entity_id as string, {
-						state: true,
-						colorTemperature: Number(evt.options.colorTemp),
-					})
+					client.command(
+						evt.options.entity_id as string,
+						withTransition(
+							{
+								state: true,
+								colorTemperature: Number(evt.options.colorTemp),
+							},
+							evt.options.transition,
+						),
+					)
 				},
+			}
+		}
+
+		if (whiteLights.length) {
+			actions[ActionId.LightWhite] = {
+				name: 'Set light white level (percentage)',
+				options: [
+					EntityPicker(whiteLights),
+					{ type: 'number', label: 'White (%)', id: 'white', default: 100, min: 0, max: 100, step: 1 },
+					transitionOption,
+				],
+				callback: (evt): void => {
+					client.command(
+						evt.options.entity_id as string,
+						withTransition(
+							{
+								state: true,
+								white: Number(evt.options.white) / 100,
+							},
+							evt.options.transition,
+						),
+					)
+				},
+			}
+		}
+
+		if (coldWarmWhiteLights.length) {
+			actions[ActionId.LightColdWarmWhite] = {
+				name: 'Set light cold/warm white (percentage)',
+				options: [
+					EntityPicker(coldWarmWhiteLights),
+					{ type: 'number', label: 'Cold White (%)', id: 'coldWhite', default: 50, min: 0, max: 100, step: 1 },
+					{ type: 'number', label: 'Warm White (%)', id: 'warmWhite', default: 50, min: 0, max: 100, step: 1 },
+					transitionOption,
+				],
+				callback: (evt): void => {
+					client.command(
+						evt.options.entity_id as string,
+						withTransition(
+							{
+								state: true,
+								coldWhite: Number(evt.options.coldWhite) / 100,
+								warmWhite: Number(evt.options.warmWhite) / 100,
+							},
+							evt.options.transition,
+						),
+					)
+				},
+			}
+		}
+
+		for (const entity of lights) {
+			const effects = (entity as unknown as LightEntity).effects
+			if (effects && effects.length > 0) {
+				actions[PrefixedActionIds.LightEffect + entity.id] = {
+					name: `${entity.name || entity.id}: Set light effect`,
+					options: [
+						{
+							type: 'dropdown',
+							label: 'Effect',
+							id: 'effect',
+							default: effects[0],
+							choices: effects.map((effect) => ({ id: effect, label: effect })),
+						},
+					],
+					callback: (evt): void => {
+						client.command(entity.id, { state: true, effect: evt.options.effect })
+					},
+				}
 			}
 		}
 		return actions
@@ -165,6 +304,7 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 	createFeedbacks: (client: EsphomeWrapper): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
 		const lights = client.getEntities('light')
+		const brightnessLights = lights.filter(supportsBrightness)
 		const rgbLights = lights.filter(supportsRgb)
 
 		if (lights.length) {
@@ -180,6 +320,46 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 
 					return Boolean(event.state) === Boolean(feedback.options.state)
 				},
+			}
+		}
+
+		if (brightnessLights.length) {
+			feedbacks[FeedbackId.LightBrightness] = {
+				type: 'value',
+				name: 'Light brightness value (%)',
+				description: 'Outputs the current brightness percentage (0-100) of the light',
+				options: [EntityPicker(brightnessLights)],
+				callback: (feedback): number => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || !event.state) return 0
+					return Math.round(Math.min(1, Math.max(0, Number(event.brightness ?? 1))) * 100)
+				},
+			}
+		}
+
+		for (const entity of lights) {
+			const effects = (entity as unknown as LightEntity).effects
+			if (effects && effects.length > 0) {
+				feedbacks[PrefixedFeedbackIds.LightEffect + entity.id] = {
+					type: 'boolean',
+					name: `${entity.name || entity.id}: Change from light effect`,
+					description: 'True when the light effect matches the selected effect',
+					options: [
+						{
+							type: 'dropdown',
+							label: 'Effect',
+							id: 'effect',
+							default: effects[0],
+							choices: effects.map((effect) => ({ id: effect, label: effect })),
+						},
+					],
+					defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					callback: (feedback): boolean => {
+						const event = client.latest(entity.id)
+						if (!event || !event.state) return false
+						return event.effect === feedback.options.effect
+					},
+				}
 			}
 		}
 

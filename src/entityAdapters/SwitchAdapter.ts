@@ -77,31 +77,4 @@ export const SwitchAdapter: EntityAdapter<SwitchEntity> = {
 		}
 		return { sections: makePresetSection('switches', 'Switches', ids), presets }
 	},
-
-	createPresets: (client: EsphomeWrapper): AdapterPresets => {
-		const presets: AdapterPresets['presets'] = {}
-		const ids: string[] = []
-		for (const entity of client.getEntities('switch')) {
-			const id = `preset_${entityVariableId(entity.id)}_toggle`
-			presets[id] = makeSimplePreset(
-				`${entity.name || entity.id} Toggle`,
-				entity.name || entity.id,
-				[
-					{
-						down: [{ actionId: ActionId.SwitchState, options: { entity_id: entity.id, state: OnOffToggle.Toggle } }],
-						up: [],
-					},
-				],
-				[
-					{
-						feedbackId: FeedbackId.SwitchState,
-						options: { entity_id: entity.id, state: true },
-						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
-					},
-				],
-			)
-			ids.push(id)
-		}
-		return { sections: makePresetSection('switches', 'Switches', ids), presets }
-	},
 }
