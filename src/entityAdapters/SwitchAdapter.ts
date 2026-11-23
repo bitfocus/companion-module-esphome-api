@@ -73,8 +73,8 @@ export const SwitchAdapter: EntityAdapter<SwitchEntity> = {
 					defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
 					callback: (feedback): boolean => {
 						const event = client.latest((feedback as any).options.entity_id)
-						if (!event || !event.data) return false
-						return event.data.state === feedback.options.state
+						if (!event) return false
+						return Boolean(event.state) === Boolean(feedback.options.state)
 					},
 				}
 			})

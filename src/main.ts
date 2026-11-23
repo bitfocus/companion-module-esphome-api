@@ -35,6 +35,11 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 
 		this.wrapper.on('refreshEntities', async () => {
 			await this.refreshCompanionInstances()
+			this.checkAllFeedbacks()
+		})
+
+		this.wrapper.on('state', () => {
+			this.checkAllFeedbacks()
 		})
 	}
 

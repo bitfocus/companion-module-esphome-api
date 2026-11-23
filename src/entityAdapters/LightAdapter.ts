@@ -139,9 +139,9 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 					defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
 					callback: (feedback): boolean => {
 						const event = client.latest(feedback.options.entity_id as string)
-						if (!event || !event.data) return false
+						if (!event) return false
 
-						return event.data.state === feedback.options.state
+						return Boolean(event.state) === Boolean(feedback.options.state)
 					},
 				}
 			})

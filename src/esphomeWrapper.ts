@@ -109,44 +109,9 @@ export class EsphomeWrapper {
 	}
 
 	private handleTelemetryEvent(event: any): void {
-		const type = event.type
-		if (type === 'light') {
-			console.log('[ESPHome] Light state:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		} else if (type === 'sensor') {
-			console.log('[ESPHome] Sensor state:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		} else if (type === 'binary_sensor') {
-			console.log('[ESPHome] Binary sensor state:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		} else if (type === 'switch') {
-			console.log('[ESPHome] Switch state:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		} else if (type === 'number') {
-			console.log('[ESPHome] Number state:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		} else if (type === 'climate') {
-			console.log('[ESPHome] Climate state:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		} else if (type === 'cover') {
-			console.log('[ESPHome] Cover state:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		} else if (type === 'fan') {
-			console.log('[ESPHome] Fan state:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		} else if (type === 'lock') {
-			console.log('[ESPHome] Lock state:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		} else if (type === 'select') {
-			console.log('[ESPHome] Select state:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		} else if (type === 'text_sensor') {
-			console.log('[ESPHome] Text sensor state:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		} else if (type === 'button') {
-			console.log('[ESPHome] Button pressed:', event.entity)
-			this.latestState.set(event.entity, event.data)
-		}
+		if (!event || !event.entity) return
+		this.latestState.set(event.entity, event)
+		this.emit('state', event.entity, event.type)
 	}
 
 	private refreshEntityDiscovery(entities: Entity[]): void {
@@ -229,6 +194,17 @@ export class EsphomeWrapper {
 		return this._client.getAvailableEntityIds()
 	}
 
+	getEntities(type?: string): Array<Entity & { id: string }> {
+		if (!this._client) return []
+		const all = this._client.getEntitiesWithIds()
+		return type ? all.filter((entity) => entity.type === type) : all
+	}
+
+	getEntity(entityId: string): (Entity & { id: string }) | undefined {
+		if (!this._client) return undefined
+		return this._client.getEntitiesWithIds().find((entity) => entity.id === entityId)
+	}
+
 	command(entityId: string, options: Record<string, unknown>): void {
 		if (!this._client) return
 		console.log('[ESPHome] Command:', entityId, options)
@@ -238,7 +214,7 @@ export class EsphomeWrapper {
 	}
 
 	latest(entityId: string): any {
-		return this.latestState.get(entityId)
+		return this._client?.latest(entityId as any) ?? this.latestState.get(entityId) ?? null
 	}
 
 	getLights(): any[] {

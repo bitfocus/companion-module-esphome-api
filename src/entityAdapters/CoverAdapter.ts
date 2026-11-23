@@ -67,8 +67,9 @@ export const CoverAdapter: EntityAdapter<CoverEntity> = {
 					},
 					callback: (feedback): boolean => {
 						const event = client.latest(feedback.options.entity_id as string)
-						if (!event || !event.data) return false
-						return !event.data.isOpen === !feedback.options.open
+						if (!event) return false
+						const isOpen = event.position !== undefined ? event.position > 0 : Boolean(event.isOpen)
+						return isOpen === Boolean(feedback.options.open)
 					},
 				}
 			})

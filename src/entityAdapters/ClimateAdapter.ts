@@ -52,8 +52,8 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 					},
 					callback: (feedback): boolean => {
 						const event = client.latest(feedback.options.entity_id as string)
-						if (!event || !event.data) return false
-						return event.data.mode === feedback.options.mode
+						if (!event) return false
+						return event.mode === feedback.options.mode
 					},
 				}
 			})

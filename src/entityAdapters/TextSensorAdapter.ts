@@ -32,8 +32,8 @@ export const TextSensorAdapter: EntityAdapter<TextSensorEntity> = {
 				],
 				callback: (feedback): boolean => {
 					const event = client.latest(feedback.options.entity_id as string)
-					if (!event || !event.data) return false
-					return event.data.state === feedback.options.value
+					if (!event) return false
+					return event.state === feedback.options.value
 				},
 			}
 		}

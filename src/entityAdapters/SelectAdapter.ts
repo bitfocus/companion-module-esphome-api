@@ -62,8 +62,8 @@ export const SelectAdapter: EntityAdapter<SelectEntity> = {
 					],
 					callback: (feedback): string | null => {
 						const event = client.latest((feedback as any).options.entity_id)
-						if (!event || !event.data) return null
-						return event.data.option === (feedback as any).options.state ? (feedback as any).options.state : null
+						if (!event) return null
+						return event.state === (feedback as any).options.state ? (feedback as any).options.state : null
 					},
 				}
 			})

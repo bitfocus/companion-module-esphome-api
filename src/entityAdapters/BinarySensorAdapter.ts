@@ -34,8 +34,8 @@ export const BinarySensorAdapter: EntityAdapter<BinarySensorEntity> = {
 					defaultStyle: { color: 0, bgcolor: 16777215 },
 					callback: (feedback): boolean => {
 						const event = client.latest(feedback.options.entity_id as string)
-						if (!event || !event.data) return false
-						return event.data.isOn === feedback.options.state
+						if (!event) return false
+						return Boolean(event.state) === Boolean(feedback.options.state)
 					},
 				}
 			})

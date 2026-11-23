@@ -77,8 +77,8 @@ export const NumberAdapter: EntityAdapter<NumberEntity> = {
 					],
 					callback: (feedback): number | null => {
 						const event = client.latest((feedback as any).options.entity_id)
-						if (!event || !event.data) return null
-						return event.data.state === (feedback as any).options.value ? 1 : 0
+						if (!event) return null
+						return event.state === (feedback as any).options.value ? 1 : 0
 					},
 				}
 			})
