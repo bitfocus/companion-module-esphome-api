@@ -439,7 +439,12 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 				entity.name || entity.id,
 				[
 					{
-						down: [{ actionId: ActionId.LightState, options: { entity_id: entity.id, state: OnOffToggle.Toggle } }],
+						down: [
+							{
+								actionId: ActionId.LightState,
+								options: { entity_id: entity.id, state: OnOffToggle.Toggle, transition: 0 },
+							},
+						],
 						up: [],
 					},
 				],
@@ -478,7 +483,12 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 					feedbacks: [],
 					steps: [
 						{
-							down: [{ actionId: ActionId.LightState, options: { entity_id: entity.id, state: OnOffToggle.Toggle } }],
+							down: [
+								{
+									actionId: ActionId.LightState,
+									options: { entity_id: entity.id, state: OnOffToggle.Toggle, transition: 0 },
+								},
+							],
 							up: [],
 						},
 					],
