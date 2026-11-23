@@ -1,8 +1,8 @@
 import type { ModuleSchema } from './main.js'
-import type ModuleInstance from './main.js'
+import type ESPHomeInstance from './main.js'
 import type { CompanionPresetDefinitions, CompanionPresetSection } from '@companion-module/base'
 
-export function UpdatePresets(self: ModuleInstance): void {
+export function UpdatePresets(self: ESPHomeInstance): void {
 	const structure: CompanionPresetSection[] = [
 		{
 			id: 'section1',

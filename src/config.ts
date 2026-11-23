@@ -4,7 +4,7 @@ const DEFAULT_PORT = 6053
 export type ModuleConfig = {
 	host: string
 	port?: number
-	password?: string
+	psk?: string
 }
 
 export function GetConfigFields(): SomeCompanionConfigField[] {

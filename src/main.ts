@@ -15,33 +15,27 @@ export type ModuleSchema = {
 }
 
 export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
+	config!: ModuleConfig //setup in init()
 	private readonly wrapper: EsphomeWrapper = new EsphomeWrapper('127.0.0.1', 6053)
-	private config!: ModuleConfig
 
 	constructor(internal: unknown) {
-		super(internal)
-
+		super(internal) // Call super FIRST - critical TypeScript rule!
 		this.setupEventListeners()
 	}
 
 	setupEventListeners(): void {
-		// Subscribe to wrapper events for lifecycle management
 		this.wrapper.on('connected', () => {
 			this.updateStatus(InstanceStatus.Ok)
-			console.log('[ESPHome] Connected successfully')
-			void this.initClient(this.config)
 		})
 
 		this.wrapper.on('disconnected', (reason?: string) => {
-			this.updateStatus(InstanceStatus.Disconnected)
-			console.log('[ESPHome] Disconnected:', reason)
+			this.log('info', `Disconnected from ESPHome${reason ? `: ${reason}` : ''}`)
+			this.updateStatus(InstanceStatus.Disconnected, reason)
 		})
 
 		this.wrapper.on('refreshEntities', async () => {
 			await this.refreshCompanionInstances()
 		})
-
-		// Use wrapper's built-in warn/error methods instead of event listeners
 	}
 
 	updateFeedbacks(): void {
@@ -64,24 +58,37 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 		return GetConfigFields()
 	}
 
-	async init(config: ModuleConfig): Promise<void> {
+	async init(config: ModuleConfig, _isFirstInit?: boolean): Promise<void> {
 		this.config = config
-		await this.initClient(config)
 		this.updateActions()
 		this.updateFeedbacks()
-		this.updateVariableDefinitions()
 		this.updatePresets()
+		this.updateVariableDefinitions()
+
+		await this.connectClient(config)
 	}
 
-	private async initClient(config: ModuleConfig): Promise<void> {
-		if (config.host && config.port && config.password) {
-			console.log('[ESPHome] Connecting to', config.host, 'port', config.port)
-			await this.wrapper.connect(config.host, config.port, config.password).catch((err) => {
-				console.error('[ESPHome] Connection failed:', err)
-			})
-		} else {
+	private async connectClient(config: ModuleConfig): Promise<void> {
+		if (!config.host) {
 			this.wrapper.disconnect()
+			this.updateStatus(InstanceStatus.BadConfig, 'Missing host')
+			return
 		}
+
+		this.updateStatus(InstanceStatus.Connecting)
+		this.log('info', `Connecting to ESPHome at ${config.host}:${config.port || 6053}...`)
+		try {
+			await this.wrapper.connect(config.host, config.port || 6053, config.psk || undefined)
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err)
+			this.log('error', `Failed to connect to ESPHome: ${message}`)
+			this.updateStatus(InstanceStatus.ConnectionFailure, message)
+		}
+	}
+
+	async destroy(): Promise<void> {
+		this.wrapper.disconnect()
+		this.log('debug', 'destroy')
 	}
 
 	private async refreshCompanionInstances(): Promise<void> {
@@ -89,29 +96,16 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 		this.setFeedbackDefinitions(GetFeedbacksList(this.wrapper))
 	}
 
-	public async configUpdated(config: ModuleConfig): Promise<void> {
-		let resetConnection = false
-
-		if (
+	async configUpdated(config: ModuleConfig): Promise<void> {
+		const changed =
 			!this.config ||
-			this.config.host != config.host ||
-			this.config.port != config.port ||
-			this.config.password != config.password
-		) {
-			resetConnection = true
-		}
+			this.config.host !== config.host ||
+			this.config.port !== config.port ||
+			this.config.psk !== config.psk
 
 		this.config = config
-
-		if (resetConnection === true) {
-			console.log('[ESPHome] Config changed, reconnecting')
-			await this.initClient(config)
+		if (changed) {
+			await this.connectClient(config)
 		}
-	}
-
-	public async destroy(): Promise<void> {
-		console.log('[ESPHome] Destroying wrapper')
-		this.wrapper.disconnect()
-		this.log('debug', 'destroy')
 	}
 }

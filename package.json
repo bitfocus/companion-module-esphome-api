@@ -2,9 +2,7 @@
 	"name": "esphome-api",
 	"version": "3.0.0",
 	"description": "ESPHome client module for Companion",
-	"keywords": [
-		"esphome"
-	],
+	"type": "module",
 	"homepage": "https://github.com/bitfocus/companion-module-esphome-api#readme",
 	"main": "dist/index.js",
 	"scripts": {
@@ -22,7 +20,6 @@
 		"type": "git",
 		"url": "git+https://github.com/bitfocus/companion-module-esphome-api.git"
 	},
-	"author": "Bradley Wehmeier <BradleyWehmeier@gmail.com>",
 	"license": "MIT",
 	"bugs": {
 		"url": "https://github.com/bitfocus/companion-module-esphome-api/issues"

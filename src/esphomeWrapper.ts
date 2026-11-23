@@ -1,4 +1,4 @@
-import { EspHomeClient, Entity, openEspHomeClient } from 'esphome-client'
+import { EspHomeClient, Entity } from 'esphome-client'
 
 /**
  * Wrapper around esphome-client to provide a simpler API for the companion module.
@@ -10,39 +10,46 @@ export class EsphomeWrapper {
 	// Latest state cache - stores the most recent event data for each entity ID
 	private readonly latestState: Map<string, any> = new Map()
 	// Internal event emitter for wrapper events
-	private _events = new Map<string, Array<() => void | Promise<void>>>()
+	private _events = new Map<string, Array<(...args: any[]) => void | Promise<void>>>()
 
-	constructor(host: string, port?: number, psk?: string) {
-		this.connect(host, port, psk).catch((err) => {
-			console.error('[ESPHome] Connection failed in constructor:', err)
-		})
+	constructor(_host?: string, _port?: number, _psk?: string) {
+		console.log('[ESPHome] EsphomeWrapper initialized')
 	}
 
 	async connect(host: string, port: number | undefined, psk: string | undefined): Promise<void> {
+		console.log('[ESPHome] Connecting:', { host, port: port || 6053, pskPresent: !!psk })
+
 		if (this._client) {
 			console.log('[ESPHome] Disconnecting existing client')
 			this._client.disconnect()
+			this._client = null
 		}
+
+		const client = new EspHomeClient({
+			host,
+			port: port || 6053,
+			psk: psk || undefined,
+			logger: {
+				debug: (msg: string) => console.debug('[ESPHome]', msg),
+				info: (msg: string) => console.info('[ESPHome]', msg),
+				warn: (msg: string) => console.warn('[ESPHome]', msg),
+				error: (msg: string) => console.error('[ESPHome]', msg),
+			},
+			reconnect: false,
+		})
+		this._client = client
+		this.setupEventListeners(client)
 
 		try {
-			this._client = await openEspHomeClient({
-				host,
-				port,
-				psk,
-				logger: {
-					debug: (msg: string) => console.debug('[ESPHome]', msg),
-					info: (msg: string) => console.info('[ESPHome]', msg),
-					warn: (msg: string) => console.warn('[ESPHome]', msg),
-					error: (msg: string) => console.error('[ESPHome]', msg),
-				},
-				reconnect: false,
-			})
-		} catch (err) {
-			console.error('[ESPHome] Failed to connect:', err)
+			await client.connect()
+			console.log('[ESPHome] client.connect() resolved')
+		} catch (err: any) {
+			console.error('[ESPHome] Failed to connect:', err?.message ?? err)
+			if (this._client === client) {
+				this._client = null
+			}
 			throw err
 		}
-
-		void this.setupEventListeners()
 	}
 
 	disconnect(): void {
@@ -54,39 +61,51 @@ export class EsphomeWrapper {
 		this.latestState.clear()
 	}
 
-	private async setupEventListeners(): Promise<void> {
-		if (!this._client) return
-
-		// Subscribe to lifecycle events (connect/disconnect) via stream
-		try {
-			for await (const event of this._client.lifecycle()) {
-				if (event.kind === 'connect') {
-					console.log('[ESPHome] connected', event.encrypted ? '(encrypted)' : '(plaintext)')
-					this.emit('connected')
-				} else if (event.kind === 'disconnect') {
-					console.log('[ESPHome] Disconnected:', event.cause?.message)
-					this.emit('disconnected')
-				}
-			}
-		} catch (err) {
-			console.error('[ESPHome] Lifecycle stream error:', err)
-		}
-
-		// Subscribe to telemetry events for entity state updates
-		try {
-			for await (const event of this._client.telemetry()) {
-				this.handleTelemetryEvent(event)
-			}
-		} catch (err) {
-			console.error('[ESPHome] Telemetry stream error:', err)
-		}
-
+	private setupEventListeners(client: EspHomeClient): void {
 		// Listen for entity discovery
-		this._client.on('entities', (snapshot: Entity[]) => {
+		client.on('entities', (snapshot: Entity[]) => {
+			if (this._client !== client) return
 			console.log('[ESPHome] Entities discovered:', snapshot.length, 'entities')
 			this.refreshEntityDiscovery(snapshot)
 			this.emit('refreshEntities')
 		})
+
+		// Subscribe to lifecycle and telemetry streams concurrently so neither blocks the other
+		void this.consumeLifecycleStream(client)
+		void this.consumeTelemetryStream(client)
+	}
+
+	private async consumeLifecycleStream(client: EspHomeClient): Promise<void> {
+		try {
+			for await (const event of client.lifecycle()) {
+				if (this._client !== client) break
+				if (event.kind === 'connect') {
+					console.log('[ESPHome] connected', event.encrypted ? '(encrypted)' : '(plaintext)')
+					this.emit('connected')
+				} else if (event.kind === 'disconnect') {
+					const reason = event.cause?.message
+					console.log('[ESPHome] Disconnected:', reason)
+					this.emit('disconnected', reason)
+				}
+			}
+		} catch (err) {
+			if (this._client === client) {
+				console.error('[ESPHome] Lifecycle stream error:', err)
+			}
+		}
+	}
+
+	private async consumeTelemetryStream(client: EspHomeClient): Promise<void> {
+		try {
+			for await (const event of client.telemetry()) {
+				if (this._client !== client) break
+				this.handleTelemetryEvent(event)
+			}
+		} catch (err) {
+			if (this._client === client) {
+				console.error('[ESPHome] Telemetry stream error:', err)
+			}
+		}
 	}
 
 	private handleTelemetryEvent(event: any): void {
@@ -355,19 +374,17 @@ export class EsphomeWrapper {
 		return this.getAvailableEntityIds()
 	}
 
-	on(eventName: string, callback: () => void | Promise<void>): void {
-		if (!this._client) return
-
-		console.log('[ESPHome] Setting up event listener for:', eventName)
+	on(eventName: string, callback: (...args: any[]) => void | Promise<void>): void {
+		console.log('[ESPHome] Registering event listener for:', eventName)
 		this._events.set(eventName, [...(this._events.get(eventName) || []), callback])
 	}
 
-	emit(eventName: string): void {
+	emit(eventName: string, ...args: any[]): void {
 		const handlers = this._events.get(eventName)
 		if (handlers) {
 			console.log('[ESPHome] Emitting event:', eventName, 'with', handlers.length, 'handlers')
 			for (const handler of handlers) {
-				void handler()
+				void handler(...args)
 			}
 		}
 	}
