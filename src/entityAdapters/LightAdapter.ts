@@ -2,7 +2,8 @@ import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } 
 import { LightEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
 import { EntityAdapter } from './base.js'
-import { ActionId, FeedbackId } from '../util.js'
+import { ActionId, FeedbackId, OnOffToggle } from '../util.js'
+import { EntityPicker, OnOffPicker, OnOffTogglePicker } from '../choices.js'
 
 export const LightAdapter: EntityAdapter<LightEntity> = {
 	is: (instance: unknown): instance is LightEntity => {
@@ -11,140 +12,95 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}
-		const lightEntities = client.getAvailableEntityIds()['light'] || []
+		const lights = client.getEntities('light')
 
-		if (lightEntities.length) {
-			lightEntities.forEach((entityId: string) => {
-				// State action - On/Off/Toggle
-				actions[ActionId.LightState] = {
-					name: 'Set light state',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'Entity',
-							id: 'entity_id',
-							default: entityId,
-							choices: [{ id: entityId, label: entityId }],
-						},
-						{
-							type: 'dropdown',
-							label: 'State',
-							id: 'state',
-							default: 'on',
-							choices: [
-								{ id: 'on', label: 'On' },
-								{ id: 'off', label: 'Off' },
-								{ id: 'toggle', label: 'Toggle' },
-							],
-						},
-					],
-					callback: (evt): void => {
-						const commandOptions: any = {}
-						if ((evt as any).options.state === 'toggle') {
-							commandOptions.toggle = true
-						} else {
-							commandOptions.state = (evt as any).options.state === 'on'
-						}
-						client.command((evt as any).options.entity_id, commandOptions)
-					},
-				}
+		if (lights.length) {
+			// State action - On/Off/Toggle
+			actions[ActionId.LightState] = {
+				name: 'Set light state',
+				options: [EntityPicker(lights), OnOffTogglePicker()],
+				callback: (evt): void => {
+					const entityId = evt.options.entity_id as string
+					const nextState =
+						evt.options.state === OnOffToggle.Toggle
+							? !client.latest(entityId)?.state
+							: evt.options.state === OnOffToggle.On
+					client.command(entityId, { state: nextState })
+				},
+			}
 
-				// Brightness action
-				actions[ActionId.LightBrightness] = {
-					name: 'Set light brightness (percentage)',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'Entity',
-							id: 'entity_id',
-							default: entityId,
-							choices: [{ id: entityId, label: entityId }],
-						},
-						{ type: 'number', label: 'Brightness', id: 'brightness', default: 50, min: 0, max: 255, step: 1 },
-					],
-					callback: (evt): void => {
-						client.command((evt as any).options.entity_id, { brightness: Number((evt as any).options.brightness) })
-					},
-				}
+			// Brightness action (0-100% mapped to 0-1 float)
+			actions[ActionId.LightBrightness] = {
+				name: 'Set light brightness (percentage)',
+				options: [
+					EntityPicker(lights),
+					{ type: 'number', label: 'Brightness (%)', id: 'brightness', default: 50, min: 0, max: 100, step: 1 },
+				],
+				callback: (evt): void => {
+					client.command(evt.options.entity_id as string, {
+						state: true,
+						brightness: Number(evt.options.brightness) / 100,
+					})
+				},
+			}
 
-				// Color RGB action
-				actions[ActionId.LightColorRGB] = {
-					name: 'Set light color (RGB)',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'Entity',
-							id: 'entity_id',
-							default: entityId,
-							choices: [{ id: entityId, label: entityId }],
+			// Color RGB action (0-255 mapped to 0-1 floats)
+			actions[ActionId.LightColorRGB] = {
+				name: 'Set light color (RGB)',
+				options: [
+					EntityPicker(lights),
+					{ type: 'number', label: 'Red', id: 'red', default: 128, min: 0, max: 255, step: 1 },
+					{ type: 'number', label: 'Green', id: 'green', default: 128, min: 0, max: 255, step: 1 },
+					{ type: 'number', label: 'Blue', id: 'blue', default: 128, min: 0, max: 255, step: 1 },
+				],
+				callback: (evt): void => {
+					client.command(evt.options.entity_id as string, {
+						state: true,
+						rgb: {
+							r: Number(evt.options.red) / 255,
+							g: Number(evt.options.green) / 255,
+							b: Number(evt.options.blue) / 255,
 						},
-						{ type: 'number', label: 'Red', id: 'red', default: 128, min: 0, max: 255, step: 1 },
-						{ type: 'number', label: 'Green', id: 'green', default: 128, min: 0, max: 255, step: 1 },
-						{ type: 'number', label: 'Blue', id: 'blue', default: 128, min: 0, max: 255, step: 1 },
-					],
-					callback: (evt): void => {
-						client.command((evt as any).options.entity_id, {
-							state: true,
-							rgb: {
-								r: Number((evt as any).options.red),
-								g: Number((evt as any).options.green),
-								b: Number((evt as any).options.blue),
-							},
-						})
-					},
-				}
+					})
+				},
+			}
 
-				// Color Temperature action
-				actions[ActionId.LightColorTemp] = {
-					name: 'Set light color temperature (mireds)',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'Entity',
-							id: 'entity_id',
-							default: entityId,
-							choices: [{ id: entityId, label: entityId }],
-						},
-						{ type: 'number', label: 'Color Temperature', id: 'colorTemp', default: 370, min: 153, max: 500, step: 1 },
-					],
-					callback: (evt): void => {
-						client.command((evt as any).options.entity_id, { colorTemperature: Number((evt as any).options.colorTemp) })
-					},
-				}
-			})
+			// Color Temperature action
+			actions[ActionId.LightColorTemp] = {
+				name: 'Set light color temperature (mireds)',
+				options: [
+					EntityPicker(lights),
+					{ type: 'number', label: 'Color Temperature', id: 'colorTemp', default: 370, min: 153, max: 500, step: 1 },
+				],
+				callback: (evt): void => {
+					client.command(evt.options.entity_id as string, {
+						state: true,
+						colorTemperature: Number(evt.options.colorTemp),
+					})
+				},
+			}
 		}
 		return actions
 	},
 
 	createFeedbacks: (client: EsphomeWrapper): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
-		const lightEntities = client.getAvailableEntityIds()['light'] || []
+		const lights = client.getEntities('light')
 
-		if (lightEntities.length) {
-			lightEntities.forEach((entityId: string) => {
-				feedbacks[FeedbackId.LightState] = {
-					type: 'boolean',
-					name: 'Change from light state',
-					description: 'If the light state matches the rule, change style of the bank',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'Entity',
-							id: 'entity_id',
-							default: entityId,
-							choices: [{ id: entityId, label: entityId }],
-						},
-						{ type: 'checkbox', label: 'State', id: 'state', default: true },
-					],
-					defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
-					callback: (feedback): boolean => {
-						const event = client.latest(feedback.options.entity_id as string)
-						if (!event) return false
+		if (lights.length) {
+			feedbacks[FeedbackId.LightState] = {
+				type: 'boolean',
+				name: 'Change from light state',
+				description: 'If the light state matches the rule, change style of the bank',
+				options: [EntityPicker(lights), OnOffPicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event) return false
 
-						return Boolean(event.state) === Boolean(feedback.options.state)
-					},
-				}
-			})
+					return Boolean(event.state) === Boolean(feedback.options.state)
+				},
+			}
 		}
 		return feedbacks
 	},
