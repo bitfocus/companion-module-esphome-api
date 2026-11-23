@@ -53,7 +53,7 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 	}
 
 	updatePresets(): void {
-		UpdatePresets(this)
+		UpdatePresets(this, this.wrapper)
 	}
 
 	updateVariableDefinitions(): void {
@@ -100,6 +100,7 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 	private async refreshCompanionInstances(): Promise<void> {
 		this.setActionDefinitions(GetActionsList(this.wrapper))
 		this.setFeedbackDefinitions(GetFeedbacksList(this.wrapper))
+		this.updatePresets()
 		this.updateVariableDefinitions()
 		UpdateVariableValues(this, this.wrapper)
 	}
