@@ -1,9 +1,10 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { NumberEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { EntityAdapter } from './base.js'
+import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
 import { PrefixedActionIds, FeedbackId } from '../util.js'
 import { EntityPicker, NumberComparitorPicker, NumberValuePicker, compareNumber } from '../choices.js'
+import { entityVariableId } from '../variables.js'
 
 export const NumberAdapter: EntityAdapter<NumberEntity> = {
 	is: (instance: unknown): instance is NumberEntity => {
@@ -59,5 +60,17 @@ export const NumberAdapter: EntityAdapter<NumberEntity> = {
 			}
 		}
 		return feedbacks
+	},
+
+	createPresets: (client: EsphomeWrapper, connLabel: string): AdapterPresets => {
+		const presets: AdapterPresets['presets'] = {}
+		const ids: string[] = []
+		for (const entity of client.getEntities('number')) {
+			const varId = entityVariableId(entity.id)
+			const id = `preset_${varId}_display`
+			presets[id] = makeSimplePreset(entity.name || entity.id, `${entity.name || entity.id}\n$(${connLabel}:${varId})`)
+			ids.push(id)
+		}
+		return { sections: makePresetSection('numbers', 'Numbers', ids), presets }
 	},
 }

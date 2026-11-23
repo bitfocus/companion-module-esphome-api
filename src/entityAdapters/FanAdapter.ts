@@ -1,9 +1,10 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { FanEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { EntityAdapter } from './base.js'
+import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
 import { ActionId, FeedbackId, OnOffToggle } from '../util.js'
 import { EntityPicker, OnOffTogglePicker, OnOffPicker } from '../choices.js'
+import { entityVariableId } from '../variables.js'
 
 export const FanAdapter: EntityAdapter<FanEntity> = {
 	is: (instance: unknown): instance is FanEntity => {
@@ -51,5 +52,32 @@ export const FanAdapter: EntityAdapter<FanEntity> = {
 			}
 		}
 		return feedbacks
+	},
+
+	createPresets: (client: EsphomeWrapper): AdapterPresets => {
+		const presets: AdapterPresets['presets'] = {}
+		const ids: string[] = []
+		for (const entity of client.getEntities('fan')) {
+			const id = `preset_${entityVariableId(entity.id)}_toggle`
+			presets[id] = makeSimplePreset(
+				`${entity.name || entity.id} Toggle`,
+				entity.name || entity.id,
+				[
+					{
+						down: [{ actionId: ActionId.FanState, options: { entity_id: entity.id, state: OnOffToggle.Toggle } }],
+						up: [],
+					},
+				],
+				[
+					{
+						feedbackId: FeedbackId.FanState,
+						options: { entity_id: entity.id, state: true },
+						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					},
+				],
+			)
+			ids.push(id)
+		}
+		return { sections: makePresetSection('fans', 'Fans', ids), presets }
 	},
 }

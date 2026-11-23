@@ -1,9 +1,10 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { TextSensorEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { EntityAdapter } from './base.js'
+import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
 import { FeedbackId } from '../util.js'
 import { EntityPicker } from '../choices.js'
+import { entityVariableId } from '../variables.js'
 
 export const TextSensorAdapter: EntityAdapter<TextSensorEntity> = {
 	is: (instance: unknown): instance is TextSensorEntity => {
@@ -32,5 +33,17 @@ export const TextSensorAdapter: EntityAdapter<TextSensorEntity> = {
 			}
 		}
 		return feedbacks
+	},
+
+	createPresets: (client: EsphomeWrapper, connLabel: string): AdapterPresets => {
+		const presets: AdapterPresets['presets'] = {}
+		const ids: string[] = []
+		for (const entity of client.getEntities('text_sensor')) {
+			const varId = entityVariableId(entity.id)
+			const id = `preset_${varId}_display`
+			presets[id] = makeSimplePreset(entity.name || entity.id, `${entity.name || entity.id}\n$(${connLabel}:${varId})`)
+			ids.push(id)
+		}
+		return { sections: makePresetSection('text_sensors', 'Text Sensors', ids), presets }
 	},
 }

@@ -1,9 +1,10 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { LockCommand, LockEntity, LockState } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { EntityAdapter } from './base.js'
+import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
 import { PrefixedActionIds, FeedbackId } from '../util.js'
 import { EntityPicker } from '../choices.js'
+import { entityVariableId } from '../variables.js'
 
 export const LockAdapter: EntityAdapter<LockEntity> = {
 	is: (instance: unknown): instance is LockEntity => {
@@ -81,5 +82,50 @@ export const LockAdapter: EntityAdapter<LockEntity> = {
 			}
 		}
 		return feedbacks
+	},
+
+	createPresets: (client: EsphomeWrapper): AdapterPresets => {
+		const presets: AdapterPresets['presets'] = {}
+		const ids: string[] = []
+		for (const entity of client.getEntities('lock')) {
+			const lockId = `preset_${entityVariableId(entity.id)}_lock`
+			presets[lockId] = makeSimplePreset(
+				`${entity.name || entity.id} Lock`,
+				`${entity.name || entity.id}\nLock`,
+				[
+					{
+						down: [{ actionId: PrefixedActionIds.LockCommand + entity.id, options: { state: LockCommand.LOCK } }],
+						up: [],
+					},
+				],
+				[
+					{
+						feedbackId: FeedbackId.LockState,
+						options: { entity_id: entity.id, state: LockState.LOCKED },
+						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					},
+				],
+			)
+			const unlockId = `preset_${entityVariableId(entity.id)}_unlock`
+			presets[unlockId] = makeSimplePreset(
+				`${entity.name || entity.id} Unlock`,
+				`${entity.name || entity.id}\nUnlock`,
+				[
+					{
+						down: [{ actionId: PrefixedActionIds.LockCommand + entity.id, options: { state: LockCommand.UNLOCK } }],
+						up: [],
+					},
+				],
+				[
+					{
+						feedbackId: FeedbackId.LockState,
+						options: { entity_id: entity.id, state: LockState.UNLOCKED },
+						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					},
+				],
+			)
+			ids.push(lockId, unlockId)
+		}
+		return { sections: makePresetSection('locks', 'Locks', ids), presets }
 	},
 }

@@ -1,9 +1,10 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { ClimateEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { EntityAdapter } from './base.js'
+import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
 import { FeedbackId, PrefixedActionIds } from '../util.js'
-import { AllClimateModes, ClimateMode, ClimateModePicker, EntityPicker } from '../choices.js'
+import { AllClimateModes, ClimateMode, ClimateModeLabels, ClimateModePicker, EntityPicker } from '../choices.js'
+import { entityVariableId } from '../variables.js'
 
 export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 	is: (instance: unknown): instance is ClimateEntity => {
@@ -53,5 +54,35 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 			}
 		}
 		return feedbacks
+	},
+
+	createPresets: (client: EsphomeWrapper): AdapterPresets => {
+		const presets: AdapterPresets['presets'] = {}
+		const ids: string[] = []
+		for (const entity of client.getEntities('climate')) {
+			const climateEntity = entity as unknown as ClimateEntity & { id: string }
+			const modes =
+				climateEntity.supportedModes && climateEntity.supportedModes.length
+					? [...climateEntity.supportedModes]
+					: [ClimateMode.Off]
+			for (const mode of modes) {
+				const label = ClimateModeLabels[mode] ?? String(mode)
+				const id = `preset_${entityVariableId(climateEntity.id)}_mode_${mode}`
+				presets[id] = makeSimplePreset(
+					`${climateEntity.name || climateEntity.id}: ${label}`,
+					`${climateEntity.name || climateEntity.id}\n${label}`,
+					[{ down: [{ actionId: PrefixedActionIds.ClimateMode + climateEntity.id, options: { mode } }], up: [] }],
+					[
+						{
+							feedbackId: FeedbackId.ClimateMode,
+							options: { entity_id: climateEntity.id, mode },
+							style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+						},
+					],
+				)
+				ids.push(id)
+			}
+		}
+		return { sections: makePresetSection('climate', 'Climate', ids), presets }
 	},
 }

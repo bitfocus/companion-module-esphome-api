@@ -1,9 +1,32 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
-import { LightEntity } from 'esphome-client'
+import { ColorMode, LightEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { EntityAdapter } from './base.js'
+import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
 import { ActionId, FeedbackId, OnOffToggle } from '../util.js'
 import { EntityPicker, OnOffPicker, OnOffTogglePicker } from '../choices.js'
+import { entityVariableId } from '../variables.js'
+
+const COLOR_MODE_BRIGHTNESS_BIT = 2
+const COLOR_MODE_COLOR_TEMP_BIT = 8
+const COLOR_MODE_RGB_BIT = 32
+
+function hasColorModeBit(entity: unknown, bit: number): boolean {
+	const modes = (entity as LightEntity | undefined)?.supportedColorModes
+	if (!modes || modes.length === 0) return true
+	return modes.some((m) => (m & bit) !== 0 && m !== ColorMode.UNKNOWN)
+}
+
+function supportsBrightness(entity: unknown): boolean {
+	return hasColorModeBit(entity, COLOR_MODE_BRIGHTNESS_BIT)
+}
+
+function supportsColorTemp(entity: unknown): boolean {
+	return hasColorModeBit(entity, COLOR_MODE_COLOR_TEMP_BIT)
+}
+
+function supportsRgb(entity: unknown): boolean {
+	return hasColorModeBit(entity, COLOR_MODE_RGB_BIT)
+}
 
 function parseColorToRgb(color: unknown): { r: number; g: number; b: number } | undefined {
 	if (typeof color === 'number' && !Number.isNaN(color)) {
@@ -43,6 +66,9 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}
 		const lights = client.getEntities('light')
+		const brightnessLights = lights.filter(supportsBrightness)
+		const rgbLights = lights.filter(supportsRgb)
+		const colorTempLights = lights.filter(supportsColorTemp)
 
 		if (lights.length) {
 			// State action - On/Off/Toggle
@@ -58,12 +84,14 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 					client.command(entityId, { state: nextState })
 				},
 			}
+		}
 
+		if (brightnessLights.length) {
 			// Brightness action (0-100% mapped to 0-1 float)
 			actions[ActionId.LightBrightness] = {
 				name: 'Set light brightness (percentage)',
 				options: [
-					EntityPicker(lights),
+					EntityPicker(brightnessLights),
 					{ type: 'number', label: 'Brightness (%)', id: 'brightness', default: 50, min: 0, max: 100, step: 1 },
 				],
 				callback: (evt): void => {
@@ -73,12 +101,14 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 					})
 				},
 			}
+		}
 
+		if (rgbLights.length) {
 			// Color picker action
 			actions[ActionId.LightColor] = {
 				name: 'Set light color',
 				options: [
-					EntityPicker(lights),
+					EntityPicker(rgbLights),
 					{ type: 'colorpicker', label: 'Color', id: 'color', default: combineRgb(255, 255, 255) },
 				],
 				callback: (evt): void => {
@@ -95,7 +125,7 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 			actions[ActionId.LightColorRGB] = {
 				name: 'Set light color (RGB)',
 				options: [
-					EntityPicker(lights),
+					EntityPicker(rgbLights),
 					{ type: 'number', label: 'Red', id: 'red', default: 128, min: 0, max: 255, step: 1 },
 					{ type: 'number', label: 'Green', id: 'green', default: 128, min: 0, max: 255, step: 1 },
 					{ type: 'number', label: 'Blue', id: 'blue', default: 128, min: 0, max: 255, step: 1 },
@@ -111,12 +141,14 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 					})
 				},
 			}
+		}
 
+		if (colorTempLights.length) {
 			// Color Temperature action
 			actions[ActionId.LightColorTemp] = {
 				name: 'Set light color temperature (mireds)',
 				options: [
-					EntityPicker(lights),
+					EntityPicker(colorTempLights),
 					{ type: 'number', label: 'Color Temperature', id: 'colorTemp', default: 370, min: 153, max: 500, step: 1 },
 				],
 				callback: (evt): void => {
@@ -133,6 +165,7 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 	createFeedbacks: (client: EsphomeWrapper): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
 		const lights = client.getEntities('light')
+		const rgbLights = lights.filter(supportsRgb)
 
 		if (lights.length) {
 			feedbacks[FeedbackId.LightState] = {
@@ -148,13 +181,15 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 					return Boolean(event.state) === Boolean(feedback.options.state)
 				},
 			}
+		}
 
+		if (rgbLights.length) {
 			feedbacks[FeedbackId.LightColor] = {
 				type: 'boolean',
 				name: 'Change from light color',
 				description: 'True when the light is on and its RGB color matches the selected color',
 				options: [
-					EntityPicker(lights),
+					EntityPicker(rgbLights),
 					{ type: 'colorpicker', label: 'Color', id: 'color', default: combineRgb(255, 255, 255) },
 				],
 				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
@@ -180,7 +215,7 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 				type: 'value',
 				name: 'Light color value',
 				description: 'Outputs the current RGB hex color of the light (#000000 when off)',
-				options: [EntityPicker(lights)],
+				options: [EntityPicker(rgbLights)],
 				callback: (feedback): string => {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event || !event.state) return '#000000'
@@ -197,7 +232,7 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 				type: 'value',
 				name: 'Light contrast text color',
 				description: 'Outputs #000000 or #ffffff for readable text over the current light color',
-				options: [EntityPicker(lights)],
+				options: [EntityPicker(rgbLights)],
 				callback: (feedback): string => {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event || !event.state) return '#ffffff'
@@ -211,5 +246,84 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 			}
 		}
 		return feedbacks
+	},
+
+	createPresets: (client: EsphomeWrapper): AdapterPresets => {
+		const presets: AdapterPresets['presets'] = {}
+		const lightIds: string[] = []
+
+		for (const entity of client.getEntities('light')) {
+			const toggleId = `preset_${entityVariableId(entity.id)}_toggle`
+			presets[toggleId] = makeSimplePreset(
+				`${entity.name || entity.id} Toggle`,
+				entity.name || entity.id,
+				[
+					{
+						down: [{ actionId: ActionId.LightState, options: { entity_id: entity.id, state: OnOffToggle.Toggle } }],
+						up: [],
+					},
+				],
+				[
+					{
+						feedbackId: FeedbackId.LightState,
+						options: { entity_id: entity.id, state: true },
+						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					},
+				],
+			)
+			lightIds.push(toggleId)
+
+			if (supportsRgb(entity)) {
+				const colorId = `preset_${entityVariableId(entity.id)}_color`
+				presets[colorId] = {
+					type: 'layered',
+					name: `${entity.name || entity.id} Color`,
+					elements: [
+						{
+							type: 'box',
+							id: 'bg',
+							name: 'Background',
+							color: { isExpression: true, value: '$(local:light_color)' },
+						},
+						{
+							type: 'text',
+							id: 'label',
+							name: 'Label',
+							text: `${entity.name || entity.id}\nColor`,
+							color: { isExpression: true, value: '$(local:light_text_color)' },
+							halign: 'center',
+							valign: 'center',
+						},
+					],
+					feedbacks: [],
+					steps: [
+						{
+							down: [{ actionId: ActionId.LightState, options: { entity_id: entity.id, state: OnOffToggle.Toggle } }],
+							up: [],
+						},
+					],
+					localVariables: [
+						{
+							variableType: 'feedback',
+							variableName: 'light_color',
+							feedbackId: FeedbackId.LightColorSync,
+							options: { entity_id: entity.id },
+						},
+						{
+							variableType: 'feedback',
+							variableName: 'light_text_color',
+							feedbackId: FeedbackId.LightContrastColor,
+							options: { entity_id: entity.id },
+						},
+					],
+				}
+				lightIds.push(colorId)
+			}
+		}
+
+		return {
+			sections: makePresetSection('lights', 'Lights', lightIds),
+			presets,
+		}
 	},
 }

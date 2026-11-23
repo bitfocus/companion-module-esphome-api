@@ -18,7 +18,7 @@ export enum ClimateMode {
 
 export const AllClimateModes: number[] = [0, 1, 2, 3, 4, 5, 6]
 
-const ClimateModeLabels: Record<number, string> = {
+export const ClimateModeLabels: Record<number, string> = {
 	0: 'Off',
 	1: 'Heat/Cool',
 	2: 'Cool',
