@@ -1,8 +1,9 @@
-import { CompanionActionDefinitions, CompanionFeedbackDefinitions } from '@companion-module/base'
+import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { NumberEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
 import { EntityAdapter } from './base.js'
 import { PrefixedActionIds, FeedbackId } from '../util.js'
+import { EntityPicker, NumberComparitorPicker, NumberValuePicker, compareNumber } from '../choices.js'
 
 export const NumberAdapter: EntityAdapter<NumberEntity> = {
 	is: (instance: unknown): instance is NumberEntity => {
@@ -11,77 +12,51 @@ export const NumberAdapter: EntityAdapter<NumberEntity> = {
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}
-		const numberEntities = client.getAvailableEntityIds()['number'] || []
-		if (numberEntities.length) {
-			numberEntities.forEach((entityId: string) => {
-				const entity = (client as any).getEntity(entityId)
-				const step = entity?.step ?? 1
-				const minValue = entity?.minValue ?? 0
-				const maxValue = entity?.maxValue ?? 100
+		const numbers = client.getEntities('number')
+		for (const entity of numbers) {
+			const numberEntity = entity as unknown as NumberEntity & { id: string }
+			const step = numberEntity.step ?? 1
+			const minValue = numberEntity.minValue ?? 0
+			const maxValue = numberEntity.maxValue ?? 100
 
-				actions[PrefixedActionIds.NumberState + entityId] = {
-					name: `${entityId}: Set number state`,
-					options: [
-						{
-							type: 'number',
-							label: 'Value',
-							id: 'value',
-							default: minValue,
-							min: minValue,
-							max: maxValue,
-							step: step,
-							range: true,
-						},
-					],
-					callback: (evt): void => {
-						client.command((evt as any).options.entity_id, { state: Number((evt as any).options.value) })
+			actions[PrefixedActionIds.NumberState + numberEntity.id] = {
+				name: `${numberEntity.name || numberEntity.id}: Set number state`,
+				options: [
+					{
+						type: 'number',
+						label: 'Value',
+						id: 'value',
+						default: minValue,
+						min: minValue,
+						max: maxValue,
+						step,
+						range: true,
 					},
-				}
-			})
+				],
+				callback: (evt): void => {
+					client.command(numberEntity.id, { state: Number(evt.options.value) })
+				},
+			}
 		}
 		return actions
 	},
 
 	createFeedbacks: (client: EsphomeWrapper): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
-		const numbers = client.getAvailableEntityIds()['number'] || []
+		const numbers = client.getEntities('number')
 		if (numbers.length) {
-			numbers.forEach((entityId: string) => {
-				feedbacks[FeedbackId.NumberState + entityId] = {
-					type: 'value',
-					name: `${entityId}: Change from number state`,
-					description: 'True when the number state matches the rule',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'Entity',
-							id: 'entity_id',
-							default: entityId,
-							choices: [{ id: entityId, label: entityId }],
-						},
-						{
-							type: 'dropdown',
-							label: 'Comparitor',
-							id: 'comparitor',
-							default: 'eq',
-							choices: [
-								{ id: 'eq', label: 'Equal' },
-								{ id: 'ne', label: 'Not Equal' },
-								{ id: 'gt', label: 'Greater Than' },
-								{ id: 'gte', label: 'Greater or Equal' },
-								{ id: 'lt', label: 'Less Than' },
-								{ id: 'lte', label: 'Less or Equal' },
-							],
-						},
-						{ type: 'number', label: 'Value', id: 'value', default: 0, min: -100, max: 100, step: 1 },
-					],
-					callback: (feedback): number | null => {
-						const event = client.latest((feedback as any).options.entity_id)
-						if (!event) return null
-						return event.state === (feedback as any).options.value ? 1 : 0
-					},
-				}
-			})
+			feedbacks[FeedbackId.NumberState] = {
+				type: 'boolean',
+				name: 'Change from number state',
+				description: 'True when the number state matches the rule',
+				options: [EntityPicker(numbers), NumberComparitorPicker(), NumberValuePicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.state === undefined) return false
+					return compareNumber(feedback.options.value, feedback.options.comparitor, Number(event.state))
+				},
+			}
 		}
 		return feedbacks
 	},
