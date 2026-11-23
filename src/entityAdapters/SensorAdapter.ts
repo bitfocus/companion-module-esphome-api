@@ -1,9 +1,9 @@
-import { CompanionActionDefinitions, CompanionFeedbackDefinitions } from '@companion-module/base'
+import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { SensorEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
 import { EntityAdapter } from './base.js'
 import { FeedbackId } from '../util.js'
-import { NumberComparitorPicker, NumberValuePicker } from '../choices.js'
+import { EntityPicker, NumberComparitorPicker, NumberValuePicker, compareNumber } from '../choices.js'
 
 export const SensorAdapter: EntityAdapter<SensorEntity> = {
 	is: (instance: unknown): instance is SensorEntity => {
@@ -16,27 +16,18 @@ export const SensorAdapter: EntityAdapter<SensorEntity> = {
 
 	createFeedbacks: (client: EsphomeWrapper): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
-		const sensors = client.getAvailableEntityIds()['sensor'] || []
+		const sensors = client.getEntities('sensor')
 		if (sensors.length) {
 			feedbacks[FeedbackId.SensorState] = {
-				type: 'value',
+				type: 'boolean',
 				name: 'Change from sensor state',
 				description: 'If the sensor state matches the rule, change style of the bank',
-				options: [
-					{
-						type: 'dropdown',
-						label: 'Entity',
-						id: 'entity_id',
-						default: sensors[0],
-						choices: sensors.map((e) => ({ id: e, label: e })),
-					},
-					NumberComparitorPicker(),
-					NumberValuePicker(),
-				],
-				callback: (feedback): number | null => {
-					const event = client.latest((feedback as any).options.entity_id)
-					if (!event) return null
-					return event.state === (feedback as any).options.value ? 1 : 0
+				options: [EntityPicker(sensors), NumberComparitorPicker(), NumberValuePicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.state === undefined) return false
+					return compareNumber(feedback.options.value, feedback.options.comparitor, Number(event.state))
 				},
 			}
 		}

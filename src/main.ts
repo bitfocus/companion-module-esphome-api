@@ -3,7 +3,7 @@ import { EsphomeWrapper } from './esphomeWrapper.js'
 import { ModuleConfig, GetConfigFields } from './config.js'
 import { ActionsSchema, GetActionsList, UpdateActions } from './actions.js'
 import { UpdateFeedbacks, GetFeedbacksList, type FeedbacksSchema } from './feedback.js'
-import { UpdateVariableDefinitions, type VariablesSchema } from './variables.js'
+import { UpdateVariableDefinitions, UpdateVariableValues, type VariablesSchema } from './variables.js'
 import { UpdatePresets } from './presets.js'
 
 export type ModuleSchema = {
@@ -39,6 +39,7 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 		})
 
 		this.wrapper.on('state', () => {
+			UpdateVariableValues(this, this.wrapper)
 			this.checkAllFeedbacks()
 		})
 	}
@@ -56,7 +57,7 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 	}
 
 	updateVariableDefinitions(): void {
-		UpdateVariableDefinitions(this)
+		UpdateVariableDefinitions(this, this.wrapper)
 	}
 
 	getConfigFields(): SomeCompanionConfigField[] {
@@ -99,6 +100,8 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 	private async refreshCompanionInstances(): Promise<void> {
 		this.setActionDefinitions(GetActionsList(this.wrapper))
 		this.setFeedbackDefinitions(GetFeedbacksList(this.wrapper))
+		this.updateVariableDefinitions()
+		UpdateVariableValues(this, this.wrapper)
 	}
 
 	async configUpdated(config: ModuleConfig): Promise<void> {
