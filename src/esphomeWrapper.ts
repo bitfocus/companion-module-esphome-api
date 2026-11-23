@@ -35,7 +35,6 @@ export class EsphomeWrapper {
 				warn: (msg: string) => console.warn('[ESPHome]', msg),
 				error: (msg: string) => console.error('[ESPHome]', msg),
 			},
-			reconnect: false,
 		})
 		this._client = client
 		this.setupEventListeners(client)
