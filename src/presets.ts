@@ -72,8 +72,8 @@ export function UpdatePresets(self: ESPHomeInstance, wrapper?: EsphomeWrapper): 
 	// Lights
 	const lightIds: string[] = []
 	for (const entity of wrapper.getEntities('light')) {
-		const id = `preset_${entityVariableId(entity.id)}_toggle`
-		presets[id] = makeSimplePreset(
+		const toggleId = `preset_${entityVariableId(entity.id)}_toggle`
+		presets[toggleId] = makeSimplePreset(
 			`${entity.name || entity.id} Toggle`,
 			entity.name || entity.id,
 			[
@@ -90,7 +90,51 @@ export function UpdatePresets(self: ESPHomeInstance, wrapper?: EsphomeWrapper): 
 				},
 			],
 		)
-		lightIds.push(id)
+
+		const colorId = `preset_${entityVariableId(entity.id)}_color`
+		presets[colorId] = {
+			type: 'layered',
+			name: `${entity.name || entity.id} Color`,
+			elements: [
+				{
+					type: 'box',
+					id: 'bg',
+					name: 'Background',
+					color: { isExpression: true, value: '$(local:light_color)' },
+				},
+				{
+					type: 'text',
+					id: 'label',
+					name: 'Label',
+					text: `${entity.name || entity.id}\nColor`,
+					color: { isExpression: true, value: '$(local:light_text_color)' },
+					halign: 'center',
+					valign: 'center',
+				},
+			],
+			feedbacks: [],
+			steps: [
+				{
+					down: [{ actionId: ActionId.LightState, options: { entity_id: entity.id, state: OnOffToggle.Toggle } }],
+					up: [],
+				},
+			],
+			localVariables: [
+				{
+					variableType: 'feedback',
+					variableName: 'light_color',
+					feedbackId: FeedbackId.LightColorSync,
+					options: { entity_id: entity.id },
+				},
+				{
+					variableType: 'feedback',
+					variableName: 'light_text_color',
+					feedbackId: FeedbackId.LightContrastColor,
+					options: { entity_id: entity.id },
+				},
+			],
+		}
+		lightIds.push(toggleId, colorId)
 	}
 	addGroup('lights', 'Lights', lightIds)
 

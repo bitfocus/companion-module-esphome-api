@@ -5,6 +5,7 @@ export enum ActionId {
 	LightBrightness = 'light_brightness',
 	SwitchState = 'switch_state',
 	LightColorRGB = 'light_color_rgb',
+	LightColor = 'light_color',
 	LightColorTemp = 'light_color_temp',
 }
 
@@ -22,6 +23,9 @@ export enum FeedbackId {
 	CoverOpen = 'cover_open',
 	FanState = 'fan_state',
 	LightState = 'light_on_state',
+	LightColor = 'light_color',
+	LightColorSync = 'light_color_sync',
+	LightContrastColor = 'light_contrast_color',
 	LockState = 'lock_state',
 	NumberState = 'number_state',
 	SensorState = 'sensor_state',
