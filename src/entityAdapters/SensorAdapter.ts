@@ -21,7 +21,7 @@ export const SensorAdapter: EntityAdapter<SensorEntity> = {
 			feedbacks[FeedbackId.SensorState] = {
 				type: 'boolean',
 				name: 'Change from sensor state',
-				description: 'If the sensor state matches the rule, change style of the bank',
+				description: 'True when the sensor state matches the rule',
 				options: [EntityPicker(sensors), NumberComparitorPicker(), NumberValuePicker()],
 				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
 				callback: (feedback): boolean => {

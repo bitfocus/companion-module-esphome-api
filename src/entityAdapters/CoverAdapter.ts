@@ -45,7 +45,7 @@ export const CoverAdapter: EntityAdapter<CoverEntity> = {
 				feedbacks[FeedbackId.CoverOpen + entityId] = {
 					type: 'boolean',
 					name: `${entityId}: Change from cover open`,
-					description: 'If the cover open matches the rule, change style of the bank',
+					description: 'True when the cover open state matches the rule',
 					options: [
 						{
 							type: 'dropdown',

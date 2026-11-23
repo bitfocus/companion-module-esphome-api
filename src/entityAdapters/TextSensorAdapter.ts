@@ -20,7 +20,7 @@ export const TextSensorAdapter: EntityAdapter<TextSensorEntity> = {
 			feedbacks[FeedbackId.TextSensorValue] = {
 				type: 'value',
 				name: 'Change from text sensor value',
-				description: 'If the text sensor value matches the rule, change style of the bank',
+				description: 'True when the text sensor value matches the rule',
 				options: [
 					{
 						type: 'dropdown',

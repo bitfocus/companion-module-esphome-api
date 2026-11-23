@@ -91,7 +91,7 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 			feedbacks[FeedbackId.LightState] = {
 				type: 'boolean',
 				name: 'Change from light state',
-				description: 'If the light state matches the rule, change style of the bank',
+				description: 'True when the light state matches the rule',
 				options: [EntityPicker(lights), OnOffPicker()],
 				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
 				callback: (feedback): boolean => {

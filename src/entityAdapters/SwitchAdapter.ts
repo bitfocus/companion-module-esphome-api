@@ -37,7 +37,7 @@ export const SwitchAdapter: EntityAdapter<SwitchEntity> = {
 			feedbacks[FeedbackId.SwitchState] = {
 				type: 'boolean',
 				name: 'Change from switch state',
-				description: 'If the switch state matches the rule, change style of the bank',
+				description: 'True when the switch state matches the rule',
 				options: [EntityPicker(switches), OnOffPicker()],
 				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
 				callback: (feedback): boolean => {

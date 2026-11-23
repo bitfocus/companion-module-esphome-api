@@ -50,7 +50,7 @@ export const NumberAdapter: EntityAdapter<NumberEntity> = {
 				feedbacks[FeedbackId.NumberState + entityId] = {
 					type: 'value',
 					name: `${entityId}: Change from number state`,
-					description: 'If the number state matches the rule, change style of the bank',
+					description: 'True when the number state matches the rule',
 					options: [
 						{
 							type: 'dropdown',

@@ -21,7 +21,7 @@ export const BinarySensorAdapter: EntityAdapter<BinarySensorEntity> = {
 			feedbacks[FeedbackId.BinarySensorState] = {
 				type: 'boolean',
 				name: 'Change from binary sensor state',
-				description: 'If the binary sensor state matches the rule, change style of the bank',
+				description: 'True when the binary sensor state matches the rule',
 				options: [EntityPicker(binarySensors), OnOffPicker()],
 				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
 				callback: (feedback): boolean => {

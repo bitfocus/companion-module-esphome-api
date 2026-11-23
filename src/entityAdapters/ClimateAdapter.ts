@@ -35,7 +35,7 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 				feedbacks[FeedbackId.ClimateMode + entityId] = {
 					type: 'boolean',
 					name: `${entityId}: Change from climate mode`,
-					description: 'If the climate mode matches the rule, change style of the bank',
+					description: 'True when the climate mode matches the rule',
 					options: [
 						{
 							type: 'dropdown',

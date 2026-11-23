@@ -50,7 +50,7 @@ export const FanAdapter: EntityAdapter<FanEntity> = {
 				feedbacks[FeedbackId.FanState + entityId] = {
 					type: 'boolean',
 					name: `${entityId}: Change from fan state`,
-					description: 'If the fan state matches the rule, change style of the bank',
+					description: 'True when the fan state matches the rule',
 					options: [
 						{
 							type: 'dropdown',

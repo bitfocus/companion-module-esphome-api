@@ -49,7 +49,7 @@ export const LockAdapter: EntityAdapter<LockEntity> = {
 				feedbacks[FeedbackId.LockState + entityId] = {
 					type: 'boolean',
 					name: `${entityId}: Change from lock state`,
-					description: 'If the lock state matches the rule, change style of the bank',
+					description: 'True when the lock state matches the rule',
 					options: [
 						{
 							type: 'dropdown',

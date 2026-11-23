@@ -50,7 +50,7 @@ export const SelectAdapter: EntityAdapter<SelectEntity> = {
 				feedbacks[PrefixedFeedbackIds.SelectState + entityId] = {
 					type: 'value',
 					name: `${entityId}: Change from select state`,
-					description: 'If the select state matches the rule, change style of the bank',
+					description: 'True when the select state matches the rule',
 					options: [
 						{
 							type: 'dropdown',
