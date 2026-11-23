@@ -1,4 +1,4 @@
-import { CompanionActionDefinitions, CompanionFeedbackDefinitions } from '@companion-module/base'
+import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { SelectEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
 import { EntityAdapter } from './base.js'
@@ -11,62 +11,59 @@ export const SelectAdapter: EntityAdapter<SelectEntity> = {
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}
-		const selectEntities = client.getAvailableEntityIds()['select'] || []
-		if (selectEntities.length) {
-			selectEntities.forEach((entityId: string) => {
-				const entity = (client as any).getEntity(entityId)
-				const options = entity?.options ?? []
-				const optionChoices = options.map((o: any) => ({ id: o, label: o }))
+		const selects = client.getEntities('select')
+		for (const entity of selects) {
+			const selectEntity = entity as unknown as SelectEntity & { id: string }
+			const options = selectEntity.options ?? []
+			const optionChoices = options.map((o) => ({ id: o, label: o }))
 
-				actions[PrefixedActionIds.SelectState + entityId] = {
-					name: `${entityId}: Set select state`,
-					options: [
-						{
-							type: 'dropdown',
-							label: 'State',
-							id: 'state',
-							default: options[0]?.id,
-							choices: optionChoices,
-						},
-					],
-					callback: (evt): void => {
-						client.command((evt as any).options.entity_id, { option: (evt as any).options.state })
+			actions[PrefixedActionIds.SelectState + selectEntity.id] = {
+				name: `${selectEntity.name || selectEntity.id}: Set select state`,
+				options: [
+					{
+						type: 'dropdown',
+						label: 'State',
+						id: 'state',
+						default: options[0] ?? '',
+						choices: optionChoices,
 					},
-				}
-			})
+				],
+				callback: (evt): void => {
+					client.command(selectEntity.id, { state: evt.options.state })
+				},
+			}
 		}
 		return actions
 	},
 
 	createFeedbacks: (client: EsphomeWrapper): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
-		const selects = client.getAvailableEntityIds()['select'] || []
-		if (selects.length) {
-			selects.forEach((entityId: string) => {
-				const entity = (client as any).getEntity(entityId)
-				const options = entity?.options ?? []
-				const optionChoices = options.map((o: any) => ({ id: o, label: o }))
+		const selects = client.getEntities('select')
+		for (const entity of selects) {
+			const selectEntity = entity as unknown as SelectEntity & { id: string }
+			const options = selectEntity.options ?? []
+			const optionChoices = options.map((o) => ({ id: o, label: o }))
 
-				feedbacks[PrefixedFeedbackIds.SelectState + entityId] = {
-					type: 'value',
-					name: `${entityId}: Change from select state`,
-					description: 'True when the select state matches the rule',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'State',
-							id: 'state',
-							default: options[0]?.id,
-							choices: optionChoices,
-						},
-					],
-					callback: (feedback): string | null => {
-						const event = client.latest((feedback as any).options.entity_id)
-						if (!event) return null
-						return event.state === (feedback as any).options.state ? (feedback as any).options.state : null
+			feedbacks[PrefixedFeedbackIds.SelectState + selectEntity.id] = {
+				type: 'boolean',
+				name: `${selectEntity.name || selectEntity.id}: Change from select state`,
+				description: 'True when the select state matches the rule',
+				options: [
+					{
+						type: 'dropdown',
+						label: 'State',
+						id: 'state',
+						default: options[0] ?? '',
+						choices: optionChoices,
 					},
-				}
-			})
+				],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const event = client.latest(selectEntity.id)
+					if (!event) return false
+					return event.state === feedback.options.state
+				},
+			}
 		}
 		return feedbacks
 	},
