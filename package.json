@@ -33,7 +33,7 @@
 		]
 	},
 	"engines": {
-		"node": "^22.20",
+		"node": "^26.5",
 		"yarn": "^4"
 	},
 	"dependencies": {
