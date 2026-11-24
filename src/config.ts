@@ -15,9 +15,9 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 		{
 			type: 'textinput',
 			id: 'host',
-			label: 'Target IP',
+			label: 'Target Host / IP',
 			width: 8,
-			regex: Regex.IP,
+			regex: Regex.HOSTNAME,
 		},
 		{
 			type: 'number',
