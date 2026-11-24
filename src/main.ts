@@ -3,8 +3,13 @@ import { PermanentError } from 'esphome-client'
 import { EsphomeWrapper } from './esphomeWrapper.js'
 import { ModuleConfig, ModuleSecrets, GetConfigFields } from './config.js'
 import { ActionsSchema, GetActionsList, UpdateActions } from './actions.js'
-import { UpdateFeedbacks, GetFeedbacksList, type FeedbacksSchema } from './feedback.js'
-import { UpdateVariableDefinitions, UpdateVariableValues, type VariablesSchema } from './variables.js'
+import { UpdateFeedbacks, GetFeedbacksList, getFeedbackIdsForEntity, type FeedbacksSchema } from './feedback.js'
+import {
+	UpdateVariableDefinitions,
+	UpdateVariableValues,
+	UpdateEntityVariableValue,
+	type VariablesSchema,
+} from './variables.js'
 import { UpdatePresets } from './presets.js'
 
 const INITIAL_RETRY_DELAY_MS = 5_000
@@ -47,9 +52,13 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 			this.checkAllFeedbacks()
 		})
 
-		this.wrapper.on('state', () => {
-			UpdateVariableValues(this, this.wrapper)
-			this.checkAllFeedbacks()
+		this.wrapper.on('state', (entityId: string, entityType: string) => {
+			UpdateEntityVariableValue(this, this.wrapper, entityId)
+			const feedbackIds = getFeedbackIdsForEntity(entityId, entityType)
+			if (feedbackIds.length > 0) {
+				const [first, ...rest] = feedbackIds
+				this.checkFeedbacks(first, ...rest)
+			}
 		})
 	}
 

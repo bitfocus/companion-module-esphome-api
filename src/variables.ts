@@ -77,3 +77,12 @@ export function UpdateVariableValues(self: ESPHomeInstance, wrapper: EsphomeWrap
 		self.setVariableValues(values)
 	}
 }
+
+export function UpdateEntityVariableValue(self: ESPHomeInstance, wrapper: EsphomeWrapper, entityId: string): void {
+	const entity = wrapper.getEntity(entityId)
+	if (!entity || entity.type === 'button') return
+	const val = formatEntityVariableValue(entity, wrapper.latest(entity.id))
+	if (val !== undefined) {
+		self.setVariableValues({ [entityVariableId(entity.id)]: val })
+	}
+}
