@@ -7,9 +7,13 @@ import { EntityPicker, OnOffPicker } from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
 export const BinarySensorAdapter: EntityAdapter<BinarySensorEntity> = {
+	entityType: 'binary_sensor',
+
 	is: (instance: unknown): instance is BinarySensorEntity => {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'binary_sensor'
 	},
+
+	getFeedbackIds: (): string[] => [FeedbackId.BinarySensorState],
 
 	createActions: (_client: EsphomeWrapper): CompanionActionDefinitions => {
 		return {}

@@ -7,9 +7,13 @@ import { EntityPicker, OnOffPicker, OnOffTogglePicker } from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
 export const SwitchAdapter: EntityAdapter<SwitchEntity> = {
+	entityType: 'switch',
+
 	is: (instance: unknown): instance is SwitchEntity => {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'switch'
 	},
+
+	getFeedbackIds: (): string[] => [FeedbackId.SwitchState],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}

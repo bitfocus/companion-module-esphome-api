@@ -7,9 +7,13 @@ import { EntityPicker } from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
 export const LockAdapter: EntityAdapter<LockEntity> = {
+	entityType: 'lock',
+
 	is: (instance: unknown): instance is LockEntity => {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'lock'
 	},
+
+	getFeedbackIds: (): string[] => [FeedbackId.LockState],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}

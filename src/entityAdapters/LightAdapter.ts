@@ -87,9 +87,20 @@ function parseColorToRgb(color: unknown): { r: number; g: number; b: number } | 
 }
 
 export const LightAdapter: EntityAdapter<LightEntity> = {
+	entityType: 'light',
+
 	is: (instance: unknown): instance is LightEntity => {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'light'
 	},
+
+	getFeedbackIds: (entityId: string): string[] => [
+		FeedbackId.LightState,
+		FeedbackId.LightBrightness,
+		FeedbackId.LightColor,
+		FeedbackId.LightColorSync,
+		FeedbackId.LightContrastColor,
+		`${PrefixedFeedbackIds.LightEffect}${entityId}`,
+	],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}

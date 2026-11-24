@@ -6,9 +6,13 @@ import { PrefixedActionIds, PrefixedFeedbackIds } from '../util.js'
 import { entityVariableId } from '../variables.js'
 
 export const SelectAdapter: EntityAdapter<SelectEntity> = {
+	entityType: 'select',
+
 	is: (instance: unknown): instance is SelectEntity => {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'select'
 	},
+
+	getFeedbackIds: (entityId: string): string[] => [`${PrefixedFeedbackIds.SelectState}${entityId}`],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}

@@ -59,8 +59,10 @@ export function makePresetSection(
 }
 
 export interface EntityAdapter<T> {
+	entityType: string
 	is(instance: unknown): instance is T
 	createActions(client: EsphomeWrapper): CompanionActionDefinitions
 	createFeedbacks(client: EsphomeWrapper): CompanionFeedbackDefinitions
+	getFeedbackIds?(entityId: string): string[]
 	createPresets?(client: EsphomeWrapper, connLabel: string): AdapterPresets
 }

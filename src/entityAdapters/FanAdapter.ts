@@ -7,9 +7,18 @@ import { EntityPicker, OnOffTogglePicker, OnOffPicker } from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
 export const FanAdapter: EntityAdapter<FanEntity> = {
+	entityType: 'fan',
+
 	is: (instance: unknown): instance is FanEntity => {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'fan'
 	},
+
+	getFeedbackIds: (): string[] => [
+		FeedbackId.FanState,
+		FeedbackId.FanSpeed,
+		FeedbackId.FanOscillating,
+		FeedbackId.FanDirection,
+	],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}

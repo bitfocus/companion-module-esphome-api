@@ -7,9 +7,13 @@ import { EntityPicker, NumberComparitorPicker, NumberValuePicker, compareNumber 
 import { entityVariableId } from '../variables.js'
 
 export const NumberAdapter: EntityAdapter<NumberEntity> = {
+	entityType: 'number',
+
 	is: (instance: unknown): instance is NumberEntity => {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'number'
 	},
+
+	getFeedbackIds: (): string[] => [FeedbackId.NumberState],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}

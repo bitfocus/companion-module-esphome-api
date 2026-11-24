@@ -7,9 +7,13 @@ import { EntityPicker } from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
 export const CoverAdapter: EntityAdapter<CoverEntity> = {
+	entityType: 'cover',
+
 	is: (instance: unknown): instance is CoverEntity => {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'cover'
 	},
+
+	getFeedbackIds: (): string[] => [FeedbackId.CoverOpen, FeedbackId.CoverPosition, FeedbackId.CoverOperation],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}

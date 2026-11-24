@@ -17,9 +17,18 @@ import {
 import { entityVariableId } from '../variables.js'
 
 export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
+	entityType: 'climate',
+
 	is: (instance: unknown): instance is ClimateEntity => {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'climate'
 	},
+
+	getFeedbackIds: (): string[] => [
+		FeedbackId.ClimateMode,
+		FeedbackId.ClimateAction,
+		FeedbackId.ClimateCurrentTemp,
+		FeedbackId.ClimateTargetTemp,
+	],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}

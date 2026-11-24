@@ -7,6 +7,8 @@ import { EntityPicker } from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
 export const ButtonAdapter: EntityAdapter<ButtonEntity> = {
+	entityType: 'button',
+
 	is: (instance: unknown): instance is ButtonEntity => {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'button'
 	},

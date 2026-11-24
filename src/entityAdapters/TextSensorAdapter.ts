@@ -7,9 +7,13 @@ import { EntityPicker } from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
 export const TextSensorAdapter: EntityAdapter<TextSensorEntity> = {
+	entityType: 'text_sensor',
+
 	is: (instance: unknown): instance is TextSensorEntity => {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'text_sensor'
 	},
+
+	getFeedbackIds: (): string[] => [FeedbackId.TextSensorValue],
 
 	createActions: (_client: EsphomeWrapper): CompanionActionDefinitions => {
 		return {}
