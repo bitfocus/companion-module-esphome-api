@@ -1,6 +1,6 @@
 import { InstanceBase, InstanceStatus, type SomeCompanionConfigField } from '@companion-module/base'
 import { EsphomeWrapper } from './esphomeWrapper.js'
-import { ModuleConfig, GetConfigFields } from './config.js'
+import { ModuleConfig, ModuleSecrets, GetConfigFields } from './config.js'
 import { ActionsSchema, GetActionsList, UpdateActions } from './actions.js'
 import { UpdateFeedbacks, GetFeedbacksList, type FeedbacksSchema } from './feedback.js'
 import { UpdateVariableDefinitions, UpdateVariableValues, type VariablesSchema } from './variables.js'
@@ -8,7 +8,7 @@ import { UpdatePresets } from './presets.js'
 
 export type ModuleSchema = {
 	config: ModuleConfig
-	secrets: undefined
+	secrets: ModuleSecrets
 	actions: ActionsSchema
 	feedbacks: FeedbacksSchema
 	variables: VariablesSchema
@@ -16,6 +16,7 @@ export type ModuleSchema = {
 
 export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 	config!: ModuleConfig //setup in init()
+	secrets: ModuleSecrets = {}
 	private readonly wrapper: EsphomeWrapper = new EsphomeWrapper('127.0.0.1', 6053)
 
 	constructor(internal: unknown) {
@@ -64,17 +65,18 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 		return GetConfigFields()
 	}
 
-	async init(config: ModuleConfig, _isFirstInit?: boolean): Promise<void> {
+	async init(config: ModuleConfig, _isFirstInit: boolean, secrets: ModuleSecrets): Promise<void> {
 		this.config = config
+		this.secrets = secrets ?? {}
 		this.updateActions()
 		this.updateFeedbacks()
 		this.updatePresets()
 		this.updateVariableDefinitions()
 
-		await this.connectClient(config)
+		await this.connectClient(config, this.secrets)
 	}
 
-	private async connectClient(config: ModuleConfig): Promise<void> {
+	private async connectClient(config: ModuleConfig, secrets: ModuleSecrets): Promise<void> {
 		if (!config.host) {
 			this.wrapper.disconnect()
 			this.updateStatus(InstanceStatus.BadConfig, 'Missing host')
@@ -84,7 +86,7 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 		this.updateStatus(InstanceStatus.Connecting)
 		this.log('info', `Connecting to ESPHome at ${config.host}:${config.port || 6053}...`)
 		try {
-			await this.wrapper.connect(config.host, config.port || 6053, config.psk || undefined)
+			await this.wrapper.connect(config.host, config.port || 6053, secrets.psk || undefined)
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err)
 			this.log('error', `Failed to connect to ESPHome: ${message}`)
@@ -105,16 +107,18 @@ export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 		UpdateVariableValues(this, this.wrapper)
 	}
 
-	async configUpdated(config: ModuleConfig): Promise<void> {
+	async configUpdated(config: ModuleConfig, secrets: ModuleSecrets): Promise<void> {
+		const nextSecrets = secrets ?? {}
 		const changed =
 			!this.config ||
 			this.config.host !== config.host ||
 			this.config.port !== config.port ||
-			this.config.psk !== config.psk
+			this.secrets.psk !== nextSecrets.psk
 
 		this.config = config
+		this.secrets = nextSecrets
 		if (changed) {
-			await this.connectClient(config)
+			await this.connectClient(config, nextSecrets)
 		}
 	}
 }

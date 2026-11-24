@@ -4,6 +4,9 @@ const DEFAULT_PORT = 6053
 export type ModuleConfig = {
 	host: string
 	port?: number
+}
+
+export type ModuleSecrets = {
 	psk?: string
 }
 
@@ -26,10 +29,10 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			default: DEFAULT_PORT,
 		},
 		{
-			type: 'textinput',
+			type: 'secret-text',
 			id: 'psk',
 			label: 'Encryption Key',
-			width: 44,
+			width: 12,
 		},
 	]
 }
