@@ -21,7 +21,7 @@ export type ModuleSchema = {
 export default class ESPHomeInstance extends InstanceBase<ModuleSchema> {
 	config!: ModuleConfig //setup in init()
 	secrets: ModuleSecrets = {}
-	private readonly wrapper: EsphomeWrapper = new EsphomeWrapper('127.0.0.1', 6053)
+	private readonly wrapper: EsphomeWrapper = new EsphomeWrapper()
 	private reconnectTimer: ReturnType<typeof setTimeout> | undefined
 	private retryDelayMs = INITIAL_RETRY_DELAY_MS
 	private isDestroyed = false

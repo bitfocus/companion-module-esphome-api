@@ -12,8 +12,6 @@ export class EsphomeWrapper {
 	// Internal event emitter for wrapper events
 	private _events = new Map<string, Array<(...args: any[]) => void | Promise<void>>>()
 
-	constructor(_host?: string, _port?: number, _psk?: string) {}
-
 	async connect(host: string, port: number | undefined, psk: string | undefined): Promise<void> {
 		if (this._client) {
 			this._client.disconnect()
@@ -105,11 +103,6 @@ export class EsphomeWrapper {
 		this.emit('state', event.entity, event.type)
 	}
 
-	getAvailableEntityIds(): Record<string, string[]> {
-		if (!this._client) return {}
-		return this._client.getAvailableEntityIds()
-	}
-
 	getEntities(type?: string): Array<Entity & { id: string }> {
 		if (!this._client) return []
 		const all = this._client.getEntitiesWithIds()
@@ -130,138 +123,6 @@ export class EsphomeWrapper {
 		return this._client?.latest(entityId as any) ?? this.latestState.get(entityId) ?? null
 	}
 
-	getLights(): any[] {
-		const entityIds = this.getAvailableEntityIds()['light'] || []
-		return entityIds.map((id: string) => ({
-			key: 0, // Required field for WireEntity
-			type: 'light' as const,
-			name: `Light ${entityIds.indexOf(id) + 1}`,
-			objectId: id,
-		}))
-	}
-
-	getSensor(): any | undefined {
-		const entities = this.getAvailableEntityIds()['sensor'] || []
-		return entities.length > 0 ? entities[0] : undefined
-	}
-
-	getBinarySensor(): any | undefined {
-		const entities = this.getAvailableEntityIds()['binary_sensor'] || []
-		return entities.length > 0 ? entities[0] : undefined
-	}
-
-	getButton(): any | undefined {
-		const entities = this.getAvailableEntityIds()['button'] || []
-		return entities.length > 0 ? entities[0] : undefined
-	}
-
-	getClimate(): any | undefined {
-		const entities = this.getAvailableEntityIds()['climate'] || []
-		return entities.length > 0 ? entities[0] : undefined
-	}
-
-	getCover(): any | undefined {
-		const entities = this.getAvailableEntityIds()['cover'] || []
-		return entities.length > 0 ? entities[0] : undefined
-	}
-
-	getFan(): any | undefined {
-		const entities = this.getAvailableEntityIds()['fan'] || []
-		return entities.length > 0 ? entities[0] : undefined
-	}
-
-	getLock(): any | undefined {
-		const entities = this.getAvailableEntityIds()['lock'] || []
-		return entities.length > 0 ? entities[0] : undefined
-	}
-
-	getSwitch(): any | undefined {
-		const entities = this.getAvailableEntityIds()['switch'] || []
-		return entities.length > 0 ? entities[0] : undefined
-	}
-
-	getNumber(): any | undefined {
-		const entities = this.getAvailableEntityIds()['number'] || []
-		return entities.length > 0 ? entities[0] : undefined
-	}
-
-	getSelect(): any | undefined {
-		const entities = this.getAvailableEntityIds()['select'] || []
-		return entities.length > 0 ? entities[0] : undefined
-	}
-
-	getTextSensor(): any | undefined {
-		const entities = this.getAvailableEntityIds()['text_sensor'] || []
-		return entities.length > 0 ? entities[0] : undefined
-	}
-
-	clearEntities(): void {
-		this.latestState.clear()
-	}
-
-	getEntityCount(type: string): number {
-		switch (type) {
-			case 'light':
-				return this.getAvailableEntityIds()['light']?.length || 0
-			case 'sensor':
-				return this.getAvailableEntityIds()['sensor']?.length || 0
-			case 'binary_sensor':
-				return this.getAvailableEntityIds()['binary_sensor']?.length || 0
-			case 'button':
-				return this.getAvailableEntityIds()['button']?.length || 0
-			case 'climate':
-				return this.getAvailableEntityIds()['climate']?.length || 0
-			case 'cover':
-				return this.getAvailableEntityIds()['cover']?.length || 0
-			case 'fan':
-				return this.getAvailableEntityIds()['fan']?.length || 0
-			case 'lock':
-				return this.getAvailableEntityIds()['lock']?.length || 0
-			case 'switch':
-				return this.getAvailableEntityIds()['switch']?.length || 0
-			case 'number':
-				return this.getAvailableEntityIds()['number']?.length || 0
-			case 'select':
-				return this.getAvailableEntityIds()['select']?.length || 0
-			case 'text_sensor':
-				return this.getAvailableEntityIds()['text_sensor']?.length || 0
-			default:
-				return 0
-		}
-	}
-
-	getLatestState(entityId: string): any {
-		return this.latestState.get(entityId)
-	}
-
-	isOn(entityId: string): boolean | undefined {
-		const state = this.getLatestState(entityId)
-		if (!state) return undefined
-
-		// Check if entity is on based on type
-		switch (entityId.split('-')[0]) {
-			case 'light':
-				return state.state === true || state.brightness > 0
-			case 'switch':
-				return state.state === true
-			case 'climate':
-				return state.mode !== 'off'
-			default:
-				return undefined
-		}
-	}
-
-	setState(entityId: string, value: Record<string, unknown>): void {
-		if (!this._client) return
-		this._client.commandAndAwait(entityId as any, value).catch((err) => {
-			console.error('[ESPHome] State set failed:', err)
-		})
-	}
-
-	getAllEntityIds(): Record<string, string[]> {
-		return this.getAvailableEntityIds()
-	}
-
 	on(eventName: string, callback: (...args: any[]) => void | Promise<void>): void {
 		this._events.set(eventName, [...(this._events.get(eventName) || []), callback])
 	}
@@ -273,28 +134,5 @@ export class EsphomeWrapper {
 				void handler(...args)
 			}
 		}
-	}
-
-	lifecycle(): AsyncIterableIterator<any> {
-		if (!this._client) throw new Error('Client not connected')
-		return this._client.lifecycle() as unknown as AsyncGenerator<any>
-	}
-
-	telemetry(): AsyncIterableIterator<any> {
-		if (!this._client) throw new Error('Client not connected')
-		return this._client.telemetry() as unknown as AsyncGenerator<any>
-	}
-
-	warn(msg: string): void {
-		console.warn('[ESPHome]', msg)
-	}
-
-	error(err: Error): void {
-		console.error('[ESPHome] Error:', err.message)
-	}
-
-	// Get client instance for direct access to esphome-client methods
-	getClient(): EspHomeClient | null {
-		return this._client
 	}
 }
