@@ -41,6 +41,7 @@ export class EsphomeWrapper {
 			if (this._client === client) {
 				this._client = null
 			}
+			client.disconnect()
 			throw err
 		}
 	}
