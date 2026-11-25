@@ -1,55 +1,74 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
-import { EsphomeClient } from '../esphomeClient'
-import { EntityAdapter } from './base'
-import { PrefixedActionIds, FeedbackId } from '../util'
-import Lock from '../entities/LockEntity'
-import { EntityPicker } from '../choices'
-import { LockCommand, LockState } from '../proto/api'
+import { LockCommand, LockEntity, LockState } from 'esphome-client'
+import { EsphomeWrapper } from '../esphomeWrapper.js'
+import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
+import { PrefixedActionIds, FeedbackId } from '../util.js'
+import { EntityPicker } from '../choices.js'
+import { entityVariableId } from '../variables.js'
 
-export const LockAdapter: EntityAdapter<Lock> = {
-	is: (instance: unknown): instance is Lock => {
-		return instance instanceof Lock
+export const LockAdapter: EntityAdapter<LockEntity> = {
+	entityType: 'lock',
+
+	is: (instance: unknown): instance is LockEntity => {
+		return typeof instance === 'object' && instance !== null && (instance as any).type === 'lock'
 	},
 
-	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+	getFeedbackIds: (): string[] => [FeedbackId.LockState],
+
+	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}
-		client.getAll(LockAdapter).forEach((lock) => {
-			const options = [
-				{ id: LockCommand.LOCK_LOCK, label: 'Lock' },
-				{ id: LockCommand.LOCK_UNLOCK, label: 'Unlock' },
+		const locks = client.getEntities('lock')
+		for (const entity of locks) {
+			const lockEntity = entity as unknown as LockEntity & { id: string }
+			const choices: Array<{ id: number; label: string }> = [
+				{ id: LockCommand.LOCK, label: 'Lock' },
+				{ id: LockCommand.UNLOCK, label: 'Unlock' },
 			]
-			if (lock.supportsOpen) {
-				options.push({ id: LockCommand.LOCK_OPEN, label: 'Open' })
+			if (lockEntity.supportsOpen) {
+				choices.push({ id: LockCommand.OPEN, label: 'Open' })
 			}
-			actions[PrefixedActionIds.LockCommand + lock.id] = {
-				name: `${lock.name}: Set lock state`,
-				options: [
-					{
-						type: 'dropdown',
-						label: 'State',
-						id: 'state',
-						default: LockCommand.LOCK_LOCK,
-						choices: options,
-					},
-				],
+			const actionOptions: any[] = [
+				{
+					type: 'dropdown',
+					label: 'State',
+					id: 'state',
+					default: LockCommand.LOCK,
+					choices,
+				},
+			]
+			if (lockEntity.requiresCode) {
+				actionOptions.push({
+					type: 'textinput',
+					label: 'Code',
+					id: 'code',
+					default: '',
+				})
+			}
+			actions[PrefixedActionIds.LockCommand + lockEntity.id] = {
+				name: `${lockEntity.name || lockEntity.id}: Set lock state`,
+				options: actionOptions,
 				callback: (evt): void => {
-					lock.setLockCommand(evt.options.value as LockCommand)
+					const cmd: Record<string, unknown> = { command: Number(evt.options.state) }
+					if (lockEntity.requiresCode && evt.options.code) {
+						cmd.code = evt.options.code
+					}
+					client.command(lockEntity.id, cmd)
 				},
 			}
-		})
+		}
 		return actions
 	},
 
-	createFeedbacks: (client: EsphomeClient): CompanionFeedbackDefinitions => {
+	createFeedbacks: (client: EsphomeWrapper): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
-		const entities = client.getAll(LockAdapter)
-		if (entities.length) {
+		const locks = client.getEntities('lock')
+		if (locks.length) {
 			feedbacks[FeedbackId.LockState] = {
 				type: 'boolean',
 				name: 'Change from lock state',
-				description: 'If the lock state matches the rule, change style of the bank',
+				description: 'True when the lock state matches the rule',
 				options: [
-					EntityPicker(entities),
+					EntityPicker(locks),
 					{
 						type: 'dropdown',
 						label: 'State',
@@ -57,10 +76,12 @@ export const LockAdapter: EntityAdapter<Lock> = {
 						default: LockState.LOCKED,
 						choices: [
 							{ id: LockState.LOCKED, label: 'Locked' },
-							{ id: LockState.UNLOCKED, label: 'Unocked' },
+							{ id: LockState.UNLOCKED, label: 'Unlocked' },
 							{ id: LockState.LOCKING, label: 'Locking' },
 							{ id: LockState.UNLOCKING, label: 'Unlocking' },
 							{ id: LockState.JAMMED, label: 'Jammed' },
+							{ id: LockState.OPENING, label: 'Opening' },
+							{ id: LockState.OPEN, label: 'Open' },
 							{ id: LockState.NONE, label: 'None' },
 						],
 					},
@@ -70,14 +91,58 @@ export const LockAdapter: EntityAdapter<Lock> = {
 					bgcolor: combineRgb(0, 255, 0),
 				},
 				callback: (feedback): boolean => {
-					const entity = client.getEntity(String(feedback.options.entity_id), LockAdapter)
-					if (entity) {
-						return entity.isState(feedback.options.state as LockState)
-					}
-					return false
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event) return false
+					const currentState = event.state ?? LockState.NONE
+					return currentState === feedback.options.state
 				},
 			}
 		}
 		return feedbacks
+	},
+
+	createPresets: (client: EsphomeWrapper): AdapterPresets => {
+		const presets: AdapterPresets['presets'] = {}
+		const ids: string[] = []
+		for (const entity of client.getEntities('lock')) {
+			const lockId = `preset_${entityVariableId(entity.id)}_lock`
+			presets[lockId] = makeSimplePreset(
+				`${entity.name || entity.id} Lock`,
+				`${entity.name || entity.id}\nLock`,
+				[
+					{
+						down: [{ actionId: PrefixedActionIds.LockCommand + entity.id, options: { state: LockCommand.LOCK } }],
+						up: [],
+					},
+				],
+				[
+					{
+						feedbackId: FeedbackId.LockState,
+						options: { entity_id: entity.id, state: LockState.LOCKED },
+						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					},
+				],
+			)
+			const unlockId = `preset_${entityVariableId(entity.id)}_unlock`
+			presets[unlockId] = makeSimplePreset(
+				`${entity.name || entity.id} Unlock`,
+				`${entity.name || entity.id}\nUnlock`,
+				[
+					{
+						down: [{ actionId: PrefixedActionIds.LockCommand + entity.id, options: { state: LockCommand.UNLOCK } }],
+						up: [],
+					},
+				],
+				[
+					{
+						feedbackId: FeedbackId.LockState,
+						options: { entity_id: entity.id, state: LockState.UNLOCKED },
+						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					},
+				],
+			)
+			ids.push(lockId, unlockId)
+		}
+		return { sections: makePresetSection('locks', 'Locks', ids), presets }
 	},
 }

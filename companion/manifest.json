@@ -1,9 +1,11 @@
 {
+	"$schema": "../node_modules/@companion-module/base/assets/manifest.schema.json",
+	"type": "connection",
 	"id": "esphome-api",
 	"name": "esphome-api",
 	"shortname": "esphome",
 	"description": "ESPHome client module for Companion",
-	"version": "2.0.1",
+	"version": "3.0.0",
 	"license": "MIT",
 	"repository": "git+https://github.com/bitfocus/companion-module-esphome-api.git",
 	"bugs": "https://github.com/bitfocus/companion-module-esphome-api/issues",

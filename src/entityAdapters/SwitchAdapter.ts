@@ -1,67 +1,84 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
-import { EsphomeClient } from '../esphomeClient'
-import { EntityAdapter } from './base'
-import { ActionId, FeedbackId, OnOffToggle } from '../util'
-import Switch from '../entities/SwitchEntity'
-import { EntityPicker, OnOffPicker, OnOffTogglePicker } from '../choices'
+import { SwitchEntity } from 'esphome-client'
+import { EsphomeWrapper } from '../esphomeWrapper.js'
+import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
+import { ActionId, FeedbackId, OnOffToggle } from '../util.js'
+import { EntityPicker, OnOffPicker, OnOffTogglePicker } from '../choices.js'
+import { entityVariableId } from '../variables.js'
 
-export const SwitchAdapter: EntityAdapter<Switch> = {
-	is: (instance: unknown): instance is Switch => {
-		return instance instanceof Switch
+export const SwitchAdapter: EntityAdapter<SwitchEntity> = {
+	entityType: 'switch',
+
+	is: (instance: unknown): instance is SwitchEntity => {
+		return typeof instance === 'object' && instance !== null && (instance as any).type === 'switch'
 	},
 
-	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+	getFeedbackIds: (): string[] => [FeedbackId.SwitchState],
+
+	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}
-		const switchEntities = client.getAll(SwitchAdapter)
-		if (switchEntities.length) {
+		const switches = client.getEntities('switch')
+		if (switches.length) {
 			actions[ActionId.SwitchState] = {
 				name: 'Set switch state',
-				options: [EntityPicker(switchEntities), OnOffTogglePicker()],
+				options: [EntityPicker(switches), OnOffTogglePicker()],
 				callback: (evt): void => {
-					const id = evt.options.entity_id as string
-					const e = client.getEntity(id, SwitchAdapter)
-					if (!e) return
-					let newState: boolean
-					switch (evt.options.state as OnOffToggle) {
-						case OnOffToggle.Off:
-							newState = false
-							break
-						case OnOffToggle.Toggle:
-							newState = !e.isOn
-							break
-						default:
-							newState = true
-							break
-					}
-					e.setState(newState)
+					const entityId = evt.options.entity_id as string
+					const nextState =
+						evt.options.state === OnOffToggle.Toggle
+							? !client.latest(entityId)?.state
+							: evt.options.state === OnOffToggle.On
+					client.command(entityId, { state: nextState })
 				},
 			}
 		}
 		return actions
 	},
 
-	createFeedbacks: (client: EsphomeClient): CompanionFeedbackDefinitions => {
+	createFeedbacks: (client: EsphomeWrapper): CompanionFeedbackDefinitions => {
 		const feedbacks: CompanionFeedbackDefinitions = {}
-		const entities = client.getAll(SwitchAdapter)
-		if (entities.length) {
+		const switches = client.getEntities('switch')
+		if (switches.length) {
 			feedbacks[FeedbackId.SwitchState] = {
 				type: 'boolean',
 				name: 'Change from switch state',
-				description: 'If the switch state matches the rule, change style of the bank',
-				options: [EntityPicker(entities), OnOffPicker()],
-				defaultStyle: {
-					color: combineRgb(0, 0, 0),
-					bgcolor: combineRgb(0, 255, 0),
-				},
+				description: 'True when the switch state matches the rule',
+				options: [EntityPicker(switches), OnOffPicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
 				callback: (feedback): boolean => {
-					const entity = client.getEntity(String(feedback.options.entity_id), SwitchAdapter)
-					if (entity) {
-						return entity.isOn === !!feedback.options.state
-					}
-					return false
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event) return false
+					return Boolean(event.state) === Boolean(feedback.options.state)
 				},
 			}
 		}
 		return feedbacks
+	},
+
+	createPresets: (client: EsphomeWrapper): AdapterPresets => {
+		const presets: AdapterPresets['presets'] = {}
+		const ids: string[] = []
+		for (const entity of client.getEntities('switch')) {
+			const id = `preset_${entityVariableId(entity.id)}_toggle`
+			presets[id] = makeSimplePreset(
+				`${entity.name || entity.id} Toggle`,
+				entity.name || entity.id,
+				[
+					{
+						down: [{ actionId: ActionId.SwitchState, options: { entity_id: entity.id, state: OnOffToggle.Toggle } }],
+						up: [],
+					},
+				],
+				[
+					{
+						feedbackId: FeedbackId.SwitchState,
+						options: { entity_id: entity.id, state: true },
+						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					},
+				],
+			)
+			ids.push(id)
+		}
+		return { sections: makePresetSection('switches', 'Switches', ids), presets }
 	},
 }

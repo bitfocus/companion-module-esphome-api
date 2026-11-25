@@ -1,32 +1,47 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions } from '@companion-module/base'
-import { EsphomeClient } from '../esphomeClient'
-import { EntityAdapter } from './base'
-import { ActionId } from '../util'
-import Button from '../entities/ButtonEntity'
-import { EntityPicker } from '../choices'
+import { ButtonEntity } from 'esphome-client'
+import { EsphomeWrapper } from '../esphomeWrapper.js'
+import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
+import { ActionId } from '../util.js'
+import { EntityPicker } from '../choices.js'
+import { entityVariableId } from '../variables.js'
 
-export const ButtonAdapter: EntityAdapter<Button> = {
-	is: (instance: unknown): instance is Button => {
-		return instance instanceof Button
+export const ButtonAdapter: EntityAdapter<ButtonEntity> = {
+	entityType: 'button',
+
+	is: (instance: unknown): instance is ButtonEntity => {
+		return typeof instance === 'object' && instance !== null && (instance as any).type === 'button'
 	},
 
-	createActions: (client: EsphomeClient): CompanionActionDefinitions => {
+	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}
-		const buttonEntities = client.getAll(ButtonAdapter)
-		if (buttonEntities.length) {
+		const buttons = client.getEntities('button')
+		if (buttons.length) {
 			actions[ActionId.ButtonPush] = {
 				name: 'Push Button',
-				options: [EntityPicker(buttonEntities)],
+				options: [EntityPicker(buttons)],
 				callback: (evt): void => {
-					const id = evt.options.entity_id as string
-					client.getEntity(id, ButtonAdapter)?.push()
+					client.command(evt.options.entity_id as string, {})
 				},
 			}
 		}
 		return actions
 	},
 
-	createFeedbacks: (_client: EsphomeClient): CompanionFeedbackDefinitions => {
+	createFeedbacks: (_client: EsphomeWrapper): CompanionFeedbackDefinitions => {
 		return {}
+	},
+
+	createPresets: (client: EsphomeWrapper): AdapterPresets => {
+		const presets: AdapterPresets['presets'] = {}
+		const ids: string[] = []
+		for (const entity of client.getEntities('button')) {
+			const id = `preset_${entityVariableId(entity.id)}_push`
+			presets[id] = makeSimplePreset(`${entity.name || entity.id} Push`, entity.name || entity.id, [
+				{ down: [{ actionId: ActionId.ButtonPush, options: { entity_id: entity.id } }], up: [] },
+			])
+			ids.push(id)
+		}
+		return { sections: makePresetSection('buttons', 'Buttons', ids), presets }
 	},
 }

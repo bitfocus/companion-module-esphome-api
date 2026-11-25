@@ -1,29 +1,15 @@
-import { CompanionInputFieldCheckbox, CompanionInputFieldDropdown, CompanionInputFieldNumber, InputValue } from '@companion-module/base'
-import { OnOffToggle } from './util'
+import {
+	CompanionInputFieldCheckbox,
+	CompanionInputFieldDropdown,
+	CompanionInputFieldNumber,
+	JsonValue,
+} from '@companion-module/base'
+import { ClimateAction, ClimateFanMode, ClimateMode, ClimatePreset, ClimateSwingMode, LockState } from 'esphome-client'
+import { OnOffToggle } from './util.js'
 
-export function OnOffTogglePicker(): CompanionInputFieldDropdown {
-	const options = [
-		{ id: OnOffToggle.On, label: 'On' },
-		{ id: OnOffToggle.Off, label: 'Off' },
-		{ id: OnOffToggle.Toggle, label: 'Toggle' },
-	]
-	return {
-		type: 'dropdown',
-		label: 'State',
-		id: 'state',
-		default: OnOffToggle.On,
-		choices: options,
-	}
-}
-
-export function OnOffPicker(): CompanionInputFieldCheckbox {
-	return {
-		type: 'checkbox',
-		label: 'State',
-		id: 'state',
-		default: true,
-	}
-}
+// ============================================================================
+// Entity Pickers
+// ============================================================================
 
 export function EntityPicker(entities: { id: string; name: string }[]): CompanionInputFieldDropdown {
 	return {
@@ -44,14 +30,33 @@ export function EntityPicker(entities: { id: string; name: string }[]): Companio
 	}
 }
 
-export function NumberValuePicker() : CompanionInputFieldNumber {
+export function OnOffPicker(): CompanionInputFieldCheckbox {
 	return {
-		type: 'number',
-		label: 'Value',
-		id: 'value',
-		default: 0,
-	} as CompanionInputFieldNumber
+		type: 'checkbox',
+		label: 'State',
+		id: 'state',
+		default: true,
+	}
 }
+
+export function OnOffTogglePicker(): CompanionInputFieldDropdown {
+	return {
+		type: 'dropdown',
+		label: 'State',
+		id: 'state',
+		default: OnOffToggle.On,
+		choices: [
+			{ id: OnOffToggle.On, label: 'On' },
+			{ id: OnOffToggle.Off, label: 'Off' },
+			{ id: OnOffToggle.Toggle, label: 'Toggle' },
+		],
+	}
+}
+
+// ============================================================================
+// Number Pickers & Comparison
+// ============================================================================
+
 export enum NumberComparitor {
 	Equal = 'eq',
 	NotEqual = 'ne',
@@ -60,27 +65,37 @@ export enum NumberComparitor {
 	GreaterThan = 'gt',
 	GreaterThanEqual = 'gte',
 }
+
+export function NumberValuePicker(): CompanionInputFieldNumber {
+	return {
+		type: 'number',
+		label: 'Value',
+		id: 'value',
+		default: 0,
+	} as CompanionInputFieldNumber
+}
+
 export function NumberComparitorPicker(): CompanionInputFieldDropdown {
-	const options = [
-		{ id: NumberComparitor.Equal, label: 'Equal' },
-		{ id: NumberComparitor.NotEqual, label: 'Not Equal' },
-		{ id: NumberComparitor.GreaterThan, label: 'Greater than' },
-		{ id: NumberComparitor.GreaterThanEqual, label: 'Greater than or equal' },
-		{ id: NumberComparitor.LessThan, label: 'Less than' },
-		{ id: NumberComparitor.LessThanEqual, label: 'Less than or equal' },
-	]
 	return {
 		type: 'dropdown',
 		label: 'Comparitor',
 		id: 'comparitor',
 		default: NumberComparitor.Equal,
-		choices: options,
+		choices: [
+			{ id: NumberComparitor.Equal, label: 'Equal' },
+			{ id: NumberComparitor.NotEqual, label: 'Not Equal' },
+			{ id: NumberComparitor.GreaterThan, label: 'Greater than' },
+			{ id: NumberComparitor.GreaterThanEqual, label: 'Greater than or equal' },
+			{ id: NumberComparitor.LessThan, label: 'Less than' },
+			{ id: NumberComparitor.LessThanEqual, label: 'Less than or equal' },
+		],
 	}
 }
+
 export function compareNumber(
-	target: InputValue | undefined,
-	comparitor: InputValue | undefined,
-	currentValue: number
+	target: JsonValue | undefined,
+	comparitor: JsonValue | undefined,
+	currentValue: number,
 ): boolean {
 	const targetValue = Number(target)
 	if (isNaN(targetValue)) {
@@ -101,4 +116,98 @@ export function compareNumber(
 		default:
 			return currentValue === targetValue
 	}
+}
+
+// ============================================================================
+// Climate
+// ============================================================================
+
+export { ClimateMode }
+
+export const AllClimateModes: number[] = [
+	ClimateMode.OFF,
+	ClimateMode.HEAT_COOL,
+	ClimateMode.COOL,
+	ClimateMode.HEAT,
+	ClimateMode.FAN_ONLY,
+	ClimateMode.DRY,
+	ClimateMode.AUTO,
+]
+
+export const ClimateModeLabels: Record<number, string> = {
+	[ClimateMode.OFF]: 'Off',
+	[ClimateMode.HEAT_COOL]: 'Heat/Cool',
+	[ClimateMode.COOL]: 'Cool',
+	[ClimateMode.HEAT]: 'Heat',
+	[ClimateMode.FAN_ONLY]: 'Fan Only',
+	[ClimateMode.DRY]: 'Dry',
+	[ClimateMode.AUTO]: 'Auto',
+}
+
+export const ClimateActionLabels: Record<number, string> = {
+	[ClimateAction.OFF]: 'Off',
+	[ClimateAction.COOLING]: 'Cooling',
+	[ClimateAction.HEATING]: 'Heating',
+	[ClimateAction.IDLE]: 'Idle',
+	[ClimateAction.DRYING]: 'Drying',
+	[ClimateAction.FAN]: 'Fan',
+}
+
+export const ClimateFanModeLabels: Record<number, string> = {
+	[ClimateFanMode.ON]: 'On',
+	[ClimateFanMode.OFF]: 'Off',
+	[ClimateFanMode.AUTO]: 'Auto',
+	[ClimateFanMode.LOW]: 'Low',
+	[ClimateFanMode.MEDIUM]: 'Medium',
+	[ClimateFanMode.HIGH]: 'High',
+	[ClimateFanMode.MIDDLE]: 'Middle',
+	[ClimateFanMode.FOCUS]: 'Focus',
+	[ClimateFanMode.DIFFUSE]: 'Diffuse',
+	[ClimateFanMode.QUIET]: 'Quiet',
+}
+
+export const ClimatePresetLabels: Record<number, string> = {
+	[ClimatePreset.NONE]: 'None',
+	[ClimatePreset.HOME]: 'Home',
+	[ClimatePreset.AWAY]: 'Away',
+	[ClimatePreset.BOOST]: 'Boost',
+	[ClimatePreset.COMFORT]: 'Comfort',
+	[ClimatePreset.ECO]: 'Eco',
+	[ClimatePreset.SLEEP]: 'Sleep',
+	[ClimatePreset.ACTIVITY]: 'Activity',
+}
+
+export const ClimateSwingModeLabels: Record<number, string> = {
+	[ClimateSwingMode.OFF]: 'Off',
+	[ClimateSwingMode.BOTH]: 'Both',
+	[ClimateSwingMode.VERTICAL]: 'Vertical',
+	[ClimateSwingMode.HORIZONTAL]: 'Horizontal',
+}
+
+export function ClimateModePicker(supportedModes: number[]): CompanionInputFieldDropdown {
+	return {
+		type: 'dropdown',
+		label: 'Mode',
+		id: 'mode',
+		default: supportedModes[0],
+		choices: supportedModes.map((mode) => ({
+			id: mode,
+			label: ClimateModeLabels[mode] || String(mode),
+		})),
+	}
+}
+
+// ============================================================================
+// Lock
+// ============================================================================
+
+export const LockStateLabels: Record<number, string> = {
+	[LockState.NONE]: 'None',
+	[LockState.LOCKED]: 'Locked',
+	[LockState.UNLOCKED]: 'Unlocked',
+	[LockState.JAMMED]: 'Jammed',
+	[LockState.LOCKING]: 'Locking',
+	[LockState.UNLOCKING]: 'Unlocking',
+	[LockState.OPENING]: 'Opening',
+	[LockState.OPEN]: 'Open',
 }

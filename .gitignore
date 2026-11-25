@@ -1,7 +1,10 @@
 node_modules/
 package-lock.json
-dist/
 *.log
 .idea/
+/dist
+DEBUG-*
 /pkg
-/pkg.tgz
+/*.tgz
+/.yarn
+/.vscode

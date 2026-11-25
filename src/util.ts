@@ -1,14 +1,32 @@
 export enum ActionId {
 	ButtonPush = 'button_push',
+	CoverStop = 'cover_stop',
+	CoverTilt = 'cover_tilt',
 	FanState = 'fan_state',
+	FanOscillating = 'fan_oscillating',
+	FanDirection = 'fan_direction',
 	LightState = 'light_state',
 	LightBrightness = 'light_brightness',
 	SwitchState = 'switch_state',
+	LightColorRGB = 'light_color_rgb',
+	LightColor = 'light_color',
+	LightColorTemp = 'light_color_temp',
+	LightWhite = 'light_white',
+	LightColdWarmWhite = 'light_cold_warm_white',
 }
 
 export enum PrefixedActionIds {
 	ClimateMode = 'climate_mode_id_',
+	ClimateTargetTemp = 'climate_target_temp_id_',
+	ClimateTargetTempRange = 'climate_target_temp_range_id_',
+	ClimateFanMode = 'climate_fan_mode_id_',
+	ClimatePreset = 'climate_preset_id_',
+	ClimateSwingMode = 'climate_swing_mode_id_',
+	ClimateTargetHumidity = 'climate_target_humidity_id_',
 	CoverPosition = 'cover_position_id_',
+	FanSpeed = 'fan_speed_id_',
+	FanPreset = 'fan_preset_id_',
+	LightEffect = 'light_effect_id_',
 	LockCommand = 'lock_command_id_',
 	NumberState = 'number_state_id_',
 	SelectState = 'select_state_id_',
@@ -17,9 +35,21 @@ export enum PrefixedActionIds {
 export enum FeedbackId {
 	BinarySensorState = 'binary_sensor_state',
 	ClimateMode = 'climate_mode',
+	ClimateAction = 'climate_action',
+	ClimateCurrentTemp = 'climate_current_temp',
+	ClimateTargetTemp = 'climate_target_temp',
 	CoverOpen = 'cover_open',
+	CoverPosition = 'cover_position',
+	CoverOperation = 'cover_operation',
 	FanState = 'fan_state',
+	FanSpeed = 'fan_speed',
+	FanOscillating = 'fan_oscillating',
+	FanDirection = 'fan_direction',
 	LightState = 'light_on_state',
+	LightBrightness = 'light_brightness',
+	LightColor = 'light_color',
+	LightColorSync = 'light_color_sync',
+	LightContrastColor = 'light_contrast_color',
 	LockState = 'lock_state',
 	NumberState = 'number_state',
 	SensorState = 'sensor_state',
@@ -28,6 +58,7 @@ export enum FeedbackId {
 }
 
 export enum PrefixedFeedbackIds {
+	LightEffect = 'light_effect_id_',
 	SelectState = 'select_state_id_',
 }
 
