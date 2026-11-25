@@ -51,4 +51,11 @@ Husky and `lint-staged` run automatically on `git commit` for staged files:
 - `*.{css,json,scss}`: runs `prettier --write`
 - `*.{ts,tsx,js,jsx}`: runs `yarn lint:raw --fix` (ESLint + Prettier)
 
+### Upgrade Scripts
+
+Companion config/action/feedback migrations live in `src/upgrades/` as numbered, single-purpose files (`NNNN_<description>.ts`) exported in order from `src/upgrades/index.ts`:
+
+- Export each script as `upgradeNNNN_<camelCaseName>` (matching its file prefix).
+- **Append-only**: Companion tracks which upgrade scripts have run per connection by array index in `UpgradeScripts`. Never reorder, remove, or insert before existing entries—always append new scripts to the end.
+
 [esphome]: https://esphome.io

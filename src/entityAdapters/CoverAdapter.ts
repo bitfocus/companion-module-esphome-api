@@ -3,7 +3,7 @@ import { CoverEntity, CoverOperation } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
 import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
 import { ActionId, PrefixedActionIds, FeedbackId } from '../util.js'
-import { EntityPicker } from '../choices.js'
+import { EntityPicker, NumberComparitorPicker, NumberValuePicker, compareNumber } from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
 export const CoverAdapter: EntityAdapter<CoverEntity> = {
@@ -13,7 +13,13 @@ export const CoverAdapter: EntityAdapter<CoverEntity> = {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'cover'
 	},
 
-	getFeedbackIds: (): string[] => [FeedbackId.CoverOpen, FeedbackId.CoverPosition, FeedbackId.CoverOperation],
+	getFeedbackIds: (): string[] => [
+		FeedbackId.CoverOpen,
+		FeedbackId.CoverPosition,
+		FeedbackId.CoverPositionCompare,
+		FeedbackId.CoverTilt,
+		FeedbackId.CoverOperation,
+	],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}
@@ -118,6 +124,20 @@ export const CoverAdapter: EntityAdapter<CoverEntity> = {
 				},
 			}
 
+			feedbacks[FeedbackId.CoverPositionCompare] = {
+				type: 'boolean',
+				name: 'Change from cover position (%)',
+				description: 'True when the cover position percentage (0-100) matches the rule',
+				options: [EntityPicker(covers), NumberComparitorPicker(), NumberValuePicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.position === undefined) return false
+					const pct = Math.round(Math.min(1, Math.max(0, Number(event.position))) * 100)
+					return compareNumber(feedback.options.value, feedback.options.comparitor, pct)
+				},
+			}
+
 			feedbacks[FeedbackId.CoverOperation] = {
 				type: 'boolean',
 				name: 'Change from cover operation',
@@ -144,6 +164,20 @@ export const CoverAdapter: EntityAdapter<CoverEntity> = {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event) return false
 					return (event.currentOperation ?? CoverOperation.IDLE) === feedback.options.operation
+				},
+			}
+		}
+		const tiltCovers = covers.filter((c) => Boolean((c as unknown as CoverEntity).supportsTilt))
+		if (tiltCovers.length) {
+			feedbacks[FeedbackId.CoverTilt] = {
+				type: 'value',
+				name: 'Cover tilt (%)',
+				description: 'Outputs the current cover tilt percentage (0-100)',
+				options: [EntityPicker(tiltCovers)],
+				callback: (feedback): number => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.tilt === undefined) return 0
+					return Math.round(Math.min(1, Math.max(0, Number(event.tilt))) * 100)
 				},
 			}
 		}

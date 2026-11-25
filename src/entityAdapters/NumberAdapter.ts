@@ -13,7 +13,7 @@ export const NumberAdapter: EntityAdapter<NumberEntity> = {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'number'
 	},
 
-	getFeedbackIds: (): string[] => [FeedbackId.NumberState],
+	getFeedbackIds: (): string[] => [FeedbackId.NumberState, FeedbackId.NumberValue],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
 		const actions: CompanionActionDefinitions = {}
@@ -60,6 +60,19 @@ export const NumberAdapter: EntityAdapter<NumberEntity> = {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event || event.state === undefined) return false
 					return compareNumber(feedback.options.value, feedback.options.comparitor, Number(event.state))
+				},
+			}
+
+			feedbacks[FeedbackId.NumberValue] = {
+				type: 'value',
+				name: 'Number value',
+				description: 'Outputs the current numeric value of the number entity',
+				options: [EntityPicker(numbers)],
+				callback: (feedback): number => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.state === undefined) return 0
+					const num = Number(event.state)
+					return Number.isNaN(num) ? 0 : num
 				},
 			}
 		}

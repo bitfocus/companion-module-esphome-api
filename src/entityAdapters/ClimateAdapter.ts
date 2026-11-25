@@ -2,7 +2,7 @@ import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } 
 import { ClimateAction, ClimateEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
 import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
-import { FeedbackId, PrefixedActionIds } from '../util.js'
+import { FeedbackId, PrefixedActionIds, PrefixedFeedbackIds } from '../util.js'
 import {
 	AllClimateModes,
 	ClimateActionLabels,
@@ -13,6 +13,9 @@ import {
 	ClimatePresetLabels,
 	ClimateSwingModeLabels,
 	EntityPicker,
+	NumberComparitorPicker,
+	NumberValuePicker,
+	compareNumber,
 } from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
@@ -23,11 +26,20 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'climate'
 	},
 
-	getFeedbackIds: (): string[] => [
-		FeedbackId.ClimateMode,
+	getFeedbackIds: (entityId: string): string[] => [
+		`${PrefixedFeedbackIds.ClimateMode}${entityId}`,
 		FeedbackId.ClimateAction,
 		FeedbackId.ClimateCurrentTemp,
+		FeedbackId.ClimateCurrentTempCompare,
 		FeedbackId.ClimateTargetTemp,
+		FeedbackId.ClimateTargetTempCompare,
+		FeedbackId.ClimateTargetTempLow,
+		FeedbackId.ClimateTargetTempHigh,
+		FeedbackId.ClimateTargetHumidity,
+		FeedbackId.ClimateCurrentHumidity,
+		`${PrefixedFeedbackIds.ClimateFanMode}${entityId}`,
+		`${PrefixedFeedbackIds.ClimatePreset}${entityId}`,
+		`${PrefixedFeedbackIds.ClimateSwingMode}${entityId}`,
 	],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
@@ -219,25 +231,17 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 		const currentTempClimates = climates.filter((c) =>
 			Boolean((c as unknown as ClimateEntity).supportsCurrentTemperature),
 		)
+		const twoPointClimates = climates.filter((c) =>
+			Boolean((c as unknown as ClimateEntity).supportsTwoPointTargetTemperature),
+		)
+		const targetHumidityClimates = climates.filter((c) =>
+			Boolean((c as unknown as ClimateEntity).supportsTargetHumidity),
+		)
+		const currentHumidityClimates = climates.filter((c) =>
+			Boolean((c as unknown as ClimateEntity).supportsCurrentHumidity),
+		)
 
 		if (climates.length) {
-			feedbacks[FeedbackId.ClimateMode] = {
-				type: 'boolean',
-				name: 'Change from climate mode',
-				description: 'True when the climate mode matches the rule',
-				options: [EntityPicker(climates), ClimateModePicker(AllClimateModes)],
-				defaultStyle: {
-					color: combineRgb(0, 0, 0),
-					bgcolor: combineRgb(0, 255, 0),
-				},
-				callback: (feedback): boolean => {
-					const event = client.latest(feedback.options.entity_id as string)
-					if (!event) return false
-					const currentMode = event.mode ?? ClimateMode.OFF
-					return currentMode === feedback.options.mode
-				},
-			}
-
 			feedbacks[FeedbackId.ClimateTargetTemp] = {
 				type: 'value',
 				name: 'Climate target temperature',
@@ -247,6 +251,19 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event || event.targetTemperature === undefined) return 0
 					return Number(Number(event.targetTemperature).toFixed(1))
+				},
+			}
+
+			feedbacks[FeedbackId.ClimateTargetTempCompare] = {
+				type: 'boolean',
+				name: 'Change from climate target temperature',
+				description: 'True when the climate target temperature matches the rule',
+				options: [EntityPicker(climates), NumberComparitorPicker(), NumberValuePicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.targetTemperature === undefined) return false
+					return compareNumber(feedback.options.value, feedback.options.comparitor, Number(event.targetTemperature))
 				},
 			}
 		}
@@ -290,6 +307,195 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 					return Number(Number(event.currentTemperature).toFixed(1))
 				},
 			}
+
+			feedbacks[FeedbackId.ClimateCurrentTempCompare] = {
+				type: 'boolean',
+				name: 'Change from climate current temperature',
+				description: 'True when the climate current temperature matches the rule',
+				options: [EntityPicker(currentTempClimates), NumberComparitorPicker(), NumberValuePicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.currentTemperature === undefined) return false
+					return compareNumber(feedback.options.value, feedback.options.comparitor, Number(event.currentTemperature))
+				},
+			}
+		}
+
+		if (twoPointClimates.length) {
+			feedbacks[FeedbackId.ClimateTargetTempLow] = {
+				type: 'value',
+				name: 'Climate target low temperature',
+				description: 'Outputs the target low temperature for two-point thermostats',
+				options: [EntityPicker(twoPointClimates)],
+				callback: (feedback): number => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.targetTemperatureLow === undefined) return 0
+					return Number(Number(event.targetTemperatureLow).toFixed(1))
+				},
+			}
+
+			feedbacks[FeedbackId.ClimateTargetTempHigh] = {
+				type: 'value',
+				name: 'Climate target high temperature',
+				description: 'Outputs the target high temperature for two-point thermostats',
+				options: [EntityPicker(twoPointClimates)],
+				callback: (feedback): number => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.targetTemperatureHigh === undefined) return 0
+					return Number(Number(event.targetTemperatureHigh).toFixed(1))
+				},
+			}
+		}
+
+		if (targetHumidityClimates.length) {
+			feedbacks[FeedbackId.ClimateTargetHumidity] = {
+				type: 'value',
+				name: 'Climate target humidity (%)',
+				description: 'Outputs the target humidity percentage',
+				options: [EntityPicker(targetHumidityClimates)],
+				callback: (feedback): number => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.targetHumidity === undefined) return 0
+					return Math.round(Number(event.targetHumidity))
+				},
+			}
+		}
+
+		if (currentHumidityClimates.length) {
+			feedbacks[FeedbackId.ClimateCurrentHumidity] = {
+				type: 'value',
+				name: 'Climate current humidity (%)',
+				description: 'Outputs the current measured humidity percentage',
+				options: [EntityPicker(currentHumidityClimates)],
+				callback: (feedback): number => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.currentHumidity === undefined) return 0
+					return Math.round(Number(event.currentHumidity))
+				},
+			}
+		}
+
+		for (const entity of climates) {
+			const climateEntity = entity as unknown as ClimateEntity & { id: string }
+			const labelPrefix = climateEntity.name || climateEntity.id
+			const supportedModes =
+				climateEntity.supportedModes && climateEntity.supportedModes.length
+					? [...climateEntity.supportedModes]
+					: AllClimateModes
+
+			feedbacks[PrefixedFeedbackIds.ClimateMode + climateEntity.id] = {
+				type: 'boolean',
+				name: `${labelPrefix}: Change from climate mode`,
+				description: 'True when the climate mode matches the rule',
+				options: [ClimateModePicker(supportedModes)],
+				defaultStyle: {
+					color: combineRgb(0, 0, 0),
+					bgcolor: combineRgb(0, 255, 0),
+				},
+				callback: (feedback): boolean => {
+					const event = client.latest(climateEntity.id)
+					if (!event) return false
+					const currentMode = event.mode ?? ClimateMode.OFF
+					return currentMode === feedback.options.mode
+				},
+			}
+
+			const fanModes = climateEntity.supportedFanModes ?? []
+			const customFanModes = climateEntity.supportedCustomFanModes ?? []
+			if (fanModes.length > 0 || customFanModes.length > 0) {
+				const choices = [
+					...fanModes.map((m) => ({ id: `std:${m}`, label: ClimateFanModeLabels[m] ?? String(m) })),
+					...customFanModes.map((m) => ({ id: `custom:${m}`, label: m })),
+				]
+				feedbacks[PrefixedFeedbackIds.ClimateFanMode + climateEntity.id] = {
+					type: 'boolean',
+					name: `${labelPrefix}: Change from fan mode`,
+					description: 'True when the climate fan mode matches the selected mode',
+					options: [
+						{
+							type: 'dropdown',
+							label: 'Fan Mode',
+							id: 'fanMode',
+							default: choices[0].id,
+							choices,
+						},
+					],
+					defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					callback: (feedback): boolean => {
+						const event = client.latest(climateEntity.id)
+						if (!event) return false
+						const val = feedback.options.fanMode as string
+						if (val.startsWith('custom:')) {
+							return event.customFanMode === val.slice(7)
+						}
+						if (val.startsWith('std:')) {
+							return event.fanMode === Number(val.slice(4))
+						}
+						return false
+					},
+				}
+			}
+
+			const presets = climateEntity.supportedPresets ?? []
+			const customPresets = climateEntity.supportedCustomPresets ?? []
+			if (presets.length > 0 || customPresets.length > 0) {
+				const choices = [
+					...presets.map((p) => ({ id: `std:${p}`, label: ClimatePresetLabels[p] ?? String(p) })),
+					...customPresets.map((p) => ({ id: `custom:${p}`, label: p })),
+				]
+				feedbacks[PrefixedFeedbackIds.ClimatePreset + climateEntity.id] = {
+					type: 'boolean',
+					name: `${labelPrefix}: Change from preset`,
+					description: 'True when the climate preset matches the selected preset',
+					options: [
+						{
+							type: 'dropdown',
+							label: 'Preset',
+							id: 'preset',
+							default: choices[0].id,
+							choices,
+						},
+					],
+					defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					callback: (feedback): boolean => {
+						const event = client.latest(climateEntity.id)
+						if (!event) return false
+						const val = feedback.options.preset as string
+						if (val.startsWith('custom:')) {
+							return event.customPreset === val.slice(7)
+						}
+						if (val.startsWith('std:')) {
+							return event.preset === Number(val.slice(4))
+						}
+						return false
+					},
+				}
+			}
+
+			const swingModes = climateEntity.supportedSwingModes ?? []
+			if (swingModes.length > 0) {
+				feedbacks[PrefixedFeedbackIds.ClimateSwingMode + climateEntity.id] = {
+					type: 'boolean',
+					name: `${labelPrefix}: Change from swing mode`,
+					description: 'True when the climate swing mode matches the selected mode',
+					options: [
+						{
+							type: 'dropdown',
+							label: 'Swing Mode',
+							id: 'swingMode',
+							default: swingModes[0],
+							choices: swingModes.map((s) => ({ id: s, label: ClimateSwingModeLabels[s] ?? String(s) })),
+						},
+					],
+					defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					callback: (feedback): boolean => {
+						const event = client.latest(climateEntity.id)
+						if (!event) return false
+						return event.swingMode === feedback.options.swingMode
+					},
+				}
+			}
 		}
 
 		return feedbacks
@@ -313,8 +519,8 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 					[{ down: [{ actionId: PrefixedActionIds.ClimateMode + climateEntity.id, options: { mode } }], up: [] }],
 					[
 						{
-							feedbackId: FeedbackId.ClimateMode,
-							options: { entity_id: climateEntity.id, mode },
+							feedbackId: PrefixedFeedbackIds.ClimateMode + climateEntity.id,
+							options: { mode },
 							style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
 						},
 					],

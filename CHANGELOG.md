@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Light** feedbacks: brightness percentage comparison (`Change from light brightness (%)`), color temperature (`Light color temperature` value and `Change from light color temperature` boolean with Mireds/Kelvin unit selection), and white/cold-white/warm-white channel percentage value feedbacks.
+- **Number** feedback: `Number value` numeric value feedback.
+- **Sensor** feedback: `Sensor value` numeric value feedback (respecting `accuracyDecimals`).
+- **Cover** feedbacks: position percentage comparison (`Change from cover position (%)`) and tilt percentage (`Cover tilt (%)`) value feedback.
+- **Fan** feedbacks: speed level comparison (`Change from fan speed level`) and per-entity preset mode (`Change from fan preset`) boolean feedbacks.
+- **Climate** feedbacks: two-point target temperature low/high and current/target humidity value feedbacks, current/target temperature threshold comparison booleans, and per-entity mode (filtered to `supportedModes`), fan mode, preset, and swing mode boolean feedbacks (with migration from legacy `climate_mode`).
+- **Text Sensor** feedback: added `Match Type` (`Equals`, `Not Equals`, `Contains`, `Starts With`, `Regex`) to `Change from text sensor value`, with an upgrade script to backfill existing configs.
+
 ## [3.0.0] - 2026-11-25
 
 ### Added

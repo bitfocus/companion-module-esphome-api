@@ -2,8 +2,15 @@ import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } 
 import { FanDirection, FanEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
 import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
-import { ActionId, FeedbackId, OnOffToggle, PrefixedActionIds } from '../util.js'
-import { EntityPicker, OnOffTogglePicker, OnOffPicker } from '../choices.js'
+import { ActionId, FeedbackId, OnOffToggle, PrefixedActionIds, PrefixedFeedbackIds } from '../util.js'
+import {
+	EntityPicker,
+	NumberComparitorPicker,
+	NumberValuePicker,
+	OnOffTogglePicker,
+	OnOffPicker,
+	compareNumber,
+} from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
 export const FanAdapter: EntityAdapter<FanEntity> = {
@@ -13,11 +20,13 @@ export const FanAdapter: EntityAdapter<FanEntity> = {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'fan'
 	},
 
-	getFeedbackIds: (): string[] => [
+	getFeedbackIds: (entityId: string): string[] => [
 		FeedbackId.FanState,
 		FeedbackId.FanSpeed,
+		FeedbackId.FanSpeedCompare,
 		FeedbackId.FanOscillating,
 		FeedbackId.FanDirection,
+		`${PrefixedFeedbackIds.FanPreset}${entityId}`,
 	],
 
 	createActions: (client: EsphomeWrapper): CompanionActionDefinitions => {
@@ -161,6 +170,47 @@ export const FanAdapter: EntityAdapter<FanEntity> = {
 					if (!event || !event.state) return 0
 					return Number(event.speedLevel ?? 0)
 				},
+			}
+
+			feedbacks[FeedbackId.FanSpeedCompare] = {
+				type: 'boolean',
+				name: 'Change from fan speed level',
+				description: 'True when the fan speed level matches the rule (0 when off)',
+				options: [EntityPicker(speedFans), NumberComparitorPicker(), NumberValuePicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event) return false
+					const speed = event.state ? Number(event.speedLevel ?? 0) : 0
+					return compareNumber(feedback.options.value, feedback.options.comparitor, speed)
+				},
+			}
+		}
+
+		for (const entity of fans) {
+			const fanEntity = entity as unknown as FanEntity & { id: string }
+			const presetModes = (fanEntity as { supportedPresetModes?: string[] }).supportedPresetModes
+			if (presetModes && presetModes.length > 0) {
+				feedbacks[PrefixedFeedbackIds.FanPreset + fanEntity.id] = {
+					type: 'boolean',
+					name: `${fanEntity.name || fanEntity.id}: Change from fan preset`,
+					description: 'True when the fan preset mode matches the selected preset',
+					options: [
+						{
+							type: 'dropdown',
+							label: 'Preset Mode',
+							id: 'presetMode',
+							default: presetModes[0],
+							choices: presetModes.map((mode) => ({ id: mode, label: mode })),
+						},
+					],
+					defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+					callback: (feedback): boolean => {
+						const event = client.latest(fanEntity.id)
+						if (!event) return false
+						return event.presetMode === feedback.options.presetMode
+					},
+				}
 			}
 		}
 

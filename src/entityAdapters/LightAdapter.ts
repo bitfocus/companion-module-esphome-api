@@ -3,7 +3,14 @@ import { ColorMode, LightEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
 import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
 import { ActionId, FeedbackId, OnOffToggle, PrefixedActionIds, PrefixedFeedbackIds } from '../util.js'
-import { EntityPicker, OnOffPicker, OnOffTogglePicker } from '../choices.js'
+import {
+	EntityPicker,
+	NumberComparitorPicker,
+	NumberValuePicker,
+	OnOffPicker,
+	OnOffTogglePicker,
+	compareNumber,
+} from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
 const COLOR_MODE_BRIGHTNESS_BIT = 2
@@ -96,9 +103,15 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 	getFeedbackIds: (entityId: string): string[] => [
 		FeedbackId.LightState,
 		FeedbackId.LightBrightness,
+		FeedbackId.LightBrightnessCompare,
 		FeedbackId.LightColor,
 		FeedbackId.LightColorSync,
 		FeedbackId.LightContrastColor,
+		FeedbackId.LightColorTemp,
+		FeedbackId.LightColorTempCompare,
+		FeedbackId.LightWhite,
+		FeedbackId.LightColdWhite,
+		FeedbackId.LightWarmWhite,
 		`${PrefixedFeedbackIds.LightEffect}${entityId}`,
 	],
 
@@ -317,6 +330,9 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 		const lights = client.getEntities('light')
 		const brightnessLights = lights.filter(supportsBrightness)
 		const rgbLights = lights.filter(supportsRgb)
+		const colorTempLights = lights.filter(supportsColorTemp)
+		const whiteLights = lights.filter(supportsWhite)
+		const coldWarmWhiteLights = lights.filter(supportsColdWarmWhite)
 
 		if (lights.length) {
 			feedbacks[FeedbackId.LightState] = {
@@ -344,6 +360,106 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event || !event.state) return 0
 					return Math.round(Math.min(1, Math.max(0, Number(event.brightness ?? 1))) * 100)
+				},
+			}
+
+			feedbacks[FeedbackId.LightBrightnessCompare] = {
+				type: 'boolean',
+				name: 'Change from light brightness (%)',
+				description: 'True when the light brightness percentage (0-100) matches the rule (0 when off)',
+				options: [EntityPicker(brightnessLights), NumberComparitorPicker(), NumberValuePicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event) return false
+					const pct = event.state ? Math.round(Math.min(1, Math.max(0, Number(event.brightness ?? 1))) * 100) : 0
+					return compareNumber(feedback.options.value, feedback.options.comparitor, pct)
+				},
+			}
+		}
+
+		if (colorTempLights.length) {
+			const colorTempUnitOption = {
+				type: 'dropdown' as const,
+				label: 'Unit',
+				id: 'unit',
+				default: 'mireds',
+				choices: [
+					{ id: 'mireds', label: 'Mireds' },
+					{ id: 'kelvin', label: 'Kelvin (K)' },
+				],
+			}
+
+			const readColorTemp = (entityId: string, unit: unknown): number | undefined => {
+				const event = client.latest(entityId)
+				if (!event || !event.state || event.colorTemperature === undefined) return undefined
+				const mireds = Number(event.colorTemperature)
+				if (!Number.isFinite(mireds) || mireds <= 0) return undefined
+				return unit === 'kelvin' ? Math.round(1_000_000 / mireds) : Math.round(mireds)
+			}
+
+			feedbacks[FeedbackId.LightColorTemp] = {
+				type: 'value',
+				name: 'Light color temperature',
+				description: 'Outputs the current color temperature in mireds or Kelvin (0 when off)',
+				options: [EntityPicker(colorTempLights), colorTempUnitOption],
+				callback: (feedback): number => {
+					return readColorTemp(feedback.options.entity_id as string, feedback.options.unit) ?? 0
+				},
+			}
+
+			feedbacks[FeedbackId.LightColorTempCompare] = {
+				type: 'boolean',
+				name: 'Change from light color temperature',
+				description: 'True when the light is on and its color temperature matches the rule',
+				options: [EntityPicker(colorTempLights), colorTempUnitOption, NumberComparitorPicker(), NumberValuePicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const val = readColorTemp(feedback.options.entity_id as string, feedback.options.unit)
+					if (val === undefined) return false
+					return compareNumber(feedback.options.value, feedback.options.comparitor, val)
+				},
+			}
+		}
+
+		const toPercent = (v: unknown): number => Math.round(Math.min(1, Math.max(0, Number(v ?? 0))) * 100)
+
+		if (whiteLights.length) {
+			feedbacks[FeedbackId.LightWhite] = {
+				type: 'value',
+				name: 'Light white level (%)',
+				description: 'Outputs the current white channel percentage (0-100, 0 when off)',
+				options: [EntityPicker(whiteLights)],
+				callback: (feedback): number => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || !event.state || event.white === undefined) return 0
+					return toPercent(event.white)
+				},
+			}
+		}
+
+		if (coldWarmWhiteLights.length) {
+			feedbacks[FeedbackId.LightColdWhite] = {
+				type: 'value',
+				name: 'Light cold white level (%)',
+				description: 'Outputs the current cold white channel percentage (0-100, 0 when off)',
+				options: [EntityPicker(coldWarmWhiteLights)],
+				callback: (feedback): number => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || !event.state || event.coldWhite === undefined) return 0
+					return toPercent(event.coldWhite)
+				},
+			}
+
+			feedbacks[FeedbackId.LightWarmWhite] = {
+				type: 'value',
+				name: 'Light warm white level (%)',
+				description: 'Outputs the current warm white channel percentage (0-100, 0 when off)',
+				options: [EntityPicker(coldWarmWhiteLights)],
+				callback: (feedback): number => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || !event.state || event.warmWhite === undefined) return 0
+					return toPercent(event.warmWhite)
 				},
 			}
 		}
