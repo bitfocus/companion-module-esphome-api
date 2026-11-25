@@ -45,6 +45,7 @@ export enum FeedbackId {
 	CoverOperation = 'cover_operation',
 	FanState = 'fan_state',
 	FanSpeed = 'fan_speed',
+	FanSpeedCompare = 'fan_speed_compare',
 	FanOscillating = 'fan_oscillating',
 	FanDirection = 'fan_direction',
 	LightState = 'light_on_state',
@@ -68,6 +69,7 @@ export enum FeedbackId {
 }
 
 export enum PrefixedFeedbackIds {
+	FanPreset = 'fan_preset_id_',
 	LightEffect = 'light_effect_id_',
 	SelectState = 'select_state_id_',
 }

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Number** feedback: `Number value` numeric value feedback.
 - **Sensor** feedback: `Sensor value` numeric value feedback (respecting `accuracyDecimals`).
 - **Cover** feedbacks: position percentage comparison (`Change from cover position (%)`) and tilt percentage (`Cover tilt (%)`) value feedback.
+- **Fan** feedbacks: speed level comparison (`Change from fan speed level`) and per-entity preset mode (`Change from fan preset`) boolean feedbacks.
 
 ## [3.0.0] - 2026-11-25
 
