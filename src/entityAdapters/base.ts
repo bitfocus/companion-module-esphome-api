@@ -1,5 +1,6 @@
 import {
 	combineRgb,
+	type ButtonGraphicsGaugeStop,
 	type CompanionActionDefinitions,
 	type CompanionFeedbackDefinitions,
 	type CompanionPresetDefinition,
@@ -54,6 +55,13 @@ export function makeSimplePreset(
 // Layered Icon Presets
 // ============================================================================
 
+export interface LayeredIconGaugeOptions {
+	value: number | ExpressionOrValue<number>
+	min?: number
+	max?: number
+	stops?: ButtonGraphicsGaugeStop[]
+}
+
 export interface LayeredIconPresetOptions {
 	name: string
 	text: string | ExpressionOrValue<string>
@@ -62,6 +70,7 @@ export interface LayeredIconPresetOptions {
 	iconSize?: number
 	bgcolor?: number | ExpressionOrValue<number>
 	textColor?: number | ExpressionOrValue<number>
+	gauge?: LayeredIconGaugeOptions
 	steps?: LayeredPreset['steps']
 	feedbacks?: LayeredPreset['feedbacks']
 	localVariables?: LayeredPreset['localVariables']
@@ -75,6 +84,7 @@ export function makeLayeredIconPreset({
 	iconSize = 32,
 	bgcolor = combineRgb(0, 0, 0),
 	textColor = combineRgb(255, 255, 255),
+	gauge,
 	steps = [],
 	feedbacks = [],
 	localVariables,
@@ -88,6 +98,7 @@ export function makeLayeredIconPreset({
 			color: bgcolor,
 		},
 	]
+	const bottomReserve = gauge ? 12 : 6
 
 	if (png64) {
 		elements.push(
@@ -113,7 +124,7 @@ export function makeLayeredIconPreset({
 				x: 2,
 				y: iconSize + 4,
 				width: 68,
-				height: 72 - (iconSize + 6),
+				height: 72 - (iconSize + bottomReserve),
 				halign: 'center',
 				valign: 'center',
 				fontsizeAllowShrink: true,
@@ -126,9 +137,35 @@ export function makeLayeredIconPreset({
 			name: 'Label',
 			text,
 			color: textColor,
+			x: 2,
+			y: 2,
+			width: 68,
+			height: 72 - bottomReserve,
 			halign: 'center',
 			valign: 'center',
 			fontsizeAllowShrink: true,
+		})
+	}
+
+	if (gauge) {
+		elements.push({
+			type: 'gauge',
+			id: 'gauge',
+			name: 'Gauge',
+			orientation: 'horizontal',
+			x: 6,
+			y: 63,
+			width: 60,
+			height: 6,
+			min: gauge.min ?? 0,
+			max: gauge.max ?? 100,
+			value: gauge.value,
+			roundedEnds: true,
+			trackStyle: 'dimmed',
+			fillEnabled: true,
+			fillWidth: 6,
+			multiColour: true,
+			stops: gauge.stops ?? [{ value: 0, color: combineRgb(0, 180, 255), gradient: false }],
 		})
 	}
 
