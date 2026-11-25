@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Climate** feedbacks: two-point target temperature low/high and current/target humidity value feedbacks, current/target temperature threshold comparison booleans, and per-entity mode (filtered to `supportedModes`), fan mode, preset, and swing mode boolean feedbacks (with migration from legacy `climate_mode`).
 - **Text Sensor** feedback: added `Match Type` (`Equals`, `Not Equals`, `Contains`, `Starts With`, `Regex`) to `Change from text sensor value`, with an upgrade script to backfill existing configs.
 
+### Changed
+
+- **Binary Sensor** preset: upgraded to a layered icon preset with `deviceClass`-aware MDI icons (including active/inactive state pairs) and feedback colors (alert/safety red, opening amber, activity/detection cyan, cold blue, status/power green, connectivity green/red).
+
 ## [3.0.0] - 2026-11-25
 
 ### Added
