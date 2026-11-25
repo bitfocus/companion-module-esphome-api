@@ -27,12 +27,49 @@ export const TextSensorAdapter: EntityAdapter<TextSensorEntity> = {
 				type: 'boolean',
 				name: 'Change from text sensor value',
 				description: 'True when the text sensor value matches the rule',
-				options: [EntityPicker(textSensors), { type: 'textinput', label: 'Value', id: 'value', default: '' }],
+				options: [
+					EntityPicker(textSensors),
+					{
+						type: 'dropdown',
+						label: 'Match Type',
+						id: 'matchType',
+						default: 'eq',
+						choices: [
+							{ id: 'eq', label: 'Equals' },
+							{ id: 'ne', label: 'Not Equals' },
+							{ id: 'contains', label: 'Contains' },
+							{ id: 'startsWith', label: 'Starts With' },
+							{ id: 'regex', label: 'Regex' },
+						],
+					},
+					{ type: 'textinput', label: 'Value', id: 'value', default: '' },
+				],
 				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
 				callback: (feedback): boolean => {
 					const event = client.latest(feedback.options.entity_id as string)
-					if (!event) return false
-					return event.state === feedback.options.value
+					if (!event || event.state === undefined) return false
+					const current = String(event.state)
+					const rawTarget = feedback.options.value
+					const target =
+						typeof rawTarget === 'string' || typeof rawTarget === 'number' || typeof rawTarget === 'boolean'
+							? String(rawTarget)
+							: ''
+					switch (feedback.options.matchType) {
+						case 'ne':
+							return current !== target
+						case 'contains':
+							return current.includes(target)
+						case 'startsWith':
+							return current.startsWith(target)
+						case 'regex':
+							try {
+								return new RegExp(target).test(current)
+							} catch {
+								return false
+							}
+						default:
+							return current === target
+					}
 				},
 			}
 		}
