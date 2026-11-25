@@ -40,6 +40,8 @@ export enum FeedbackId {
 	ClimateTargetTemp = 'climate_target_temp',
 	CoverOpen = 'cover_open',
 	CoverPosition = 'cover_position',
+	CoverPositionCompare = 'cover_position_compare',
+	CoverTilt = 'cover_tilt',
 	CoverOperation = 'cover_operation',
 	FanState = 'fan_state',
 	FanSpeed = 'fan_speed',
