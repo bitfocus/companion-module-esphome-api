@@ -13,6 +13,9 @@ import {
 	ClimatePresetLabels,
 	ClimateSwingModeLabels,
 	EntityPicker,
+	NumberComparitorPicker,
+	NumberValuePicker,
+	compareNumber,
 } from '../choices.js'
 import { entityVariableId } from '../variables.js'
 
@@ -24,10 +27,12 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 	},
 
 	getFeedbackIds: (entityId: string): string[] => [
-		FeedbackId.ClimateMode,
+		`${PrefixedFeedbackIds.ClimateMode}${entityId}`,
 		FeedbackId.ClimateAction,
 		FeedbackId.ClimateCurrentTemp,
+		FeedbackId.ClimateCurrentTempCompare,
 		FeedbackId.ClimateTargetTemp,
+		FeedbackId.ClimateTargetTempCompare,
 		FeedbackId.ClimateTargetTempLow,
 		FeedbackId.ClimateTargetTempHigh,
 		FeedbackId.ClimateTargetHumidity,
@@ -237,23 +242,6 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 		)
 
 		if (climates.length) {
-			feedbacks[FeedbackId.ClimateMode] = {
-				type: 'boolean',
-				name: 'Change from climate mode',
-				description: 'True when the climate mode matches the rule',
-				options: [EntityPicker(climates), ClimateModePicker(AllClimateModes)],
-				defaultStyle: {
-					color: combineRgb(0, 0, 0),
-					bgcolor: combineRgb(0, 255, 0),
-				},
-				callback: (feedback): boolean => {
-					const event = client.latest(feedback.options.entity_id as string)
-					if (!event) return false
-					const currentMode = event.mode ?? ClimateMode.OFF
-					return currentMode === feedback.options.mode
-				},
-			}
-
 			feedbacks[FeedbackId.ClimateTargetTemp] = {
 				type: 'value',
 				name: 'Climate target temperature',
@@ -263,6 +251,19 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event || event.targetTemperature === undefined) return 0
 					return Number(Number(event.targetTemperature).toFixed(1))
+				},
+			}
+
+			feedbacks[FeedbackId.ClimateTargetTempCompare] = {
+				type: 'boolean',
+				name: 'Change from climate target temperature',
+				description: 'True when the climate target temperature matches the rule',
+				options: [EntityPicker(climates), NumberComparitorPicker(), NumberValuePicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.targetTemperature === undefined) return false
+					return compareNumber(feedback.options.value, feedback.options.comparitor, Number(event.targetTemperature))
 				},
 			}
 		}
@@ -304,6 +305,19 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event || event.currentTemperature === undefined) return 0
 					return Number(Number(event.currentTemperature).toFixed(1))
+				},
+			}
+
+			feedbacks[FeedbackId.ClimateCurrentTempCompare] = {
+				type: 'boolean',
+				name: 'Change from climate current temperature',
+				description: 'True when the climate current temperature matches the rule',
+				options: [EntityPicker(currentTempClimates), NumberComparitorPicker(), NumberValuePicker()],
+				defaultStyle: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+				callback: (feedback): boolean => {
+					const event = client.latest(feedback.options.entity_id as string)
+					if (!event || event.currentTemperature === undefined) return false
+					return compareNumber(feedback.options.value, feedback.options.comparitor, Number(event.currentTemperature))
 				},
 			}
 		}
@@ -365,6 +379,27 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 		for (const entity of climates) {
 			const climateEntity = entity as unknown as ClimateEntity & { id: string }
 			const labelPrefix = climateEntity.name || climateEntity.id
+			const supportedModes =
+				climateEntity.supportedModes && climateEntity.supportedModes.length
+					? [...climateEntity.supportedModes]
+					: AllClimateModes
+
+			feedbacks[PrefixedFeedbackIds.ClimateMode + climateEntity.id] = {
+				type: 'boolean',
+				name: `${labelPrefix}: Change from climate mode`,
+				description: 'True when the climate mode matches the rule',
+				options: [ClimateModePicker(supportedModes)],
+				defaultStyle: {
+					color: combineRgb(0, 0, 0),
+					bgcolor: combineRgb(0, 255, 0),
+				},
+				callback: (feedback): boolean => {
+					const event = client.latest(climateEntity.id)
+					if (!event) return false
+					const currentMode = event.mode ?? ClimateMode.OFF
+					return currentMode === feedback.options.mode
+				},
+			}
 
 			const fanModes = climateEntity.supportedFanModes ?? []
 			const customFanModes = climateEntity.supportedCustomFanModes ?? []
@@ -484,8 +519,8 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 					[{ down: [{ actionId: PrefixedActionIds.ClimateMode + climateEntity.id, options: { mode } }], up: [] }],
 					[
 						{
-							feedbackId: FeedbackId.ClimateMode,
-							options: { entity_id: climateEntity.id, mode },
+							feedbackId: PrefixedFeedbackIds.ClimateMode + climateEntity.id,
+							options: { mode },
 							style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
 						},
 					],

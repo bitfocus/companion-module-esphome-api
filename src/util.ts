@@ -37,7 +37,9 @@ export enum FeedbackId {
 	ClimateMode = 'climate_mode',
 	ClimateAction = 'climate_action',
 	ClimateCurrentTemp = 'climate_current_temp',
+	ClimateCurrentTempCompare = 'climate_current_temp_compare',
 	ClimateTargetTemp = 'climate_target_temp',
+	ClimateTargetTempCompare = 'climate_target_temp_compare',
 	ClimateTargetTempLow = 'climate_target_temp_low',
 	ClimateTargetTempHigh = 'climate_target_temp_high',
 	ClimateTargetHumidity = 'climate_target_humidity',
@@ -73,6 +75,7 @@ export enum FeedbackId {
 }
 
 export enum PrefixedFeedbackIds {
+	ClimateMode = 'climate_mode_id_',
 	ClimateFanMode = 'climate_fan_mode_id_',
 	ClimatePreset = 'climate_preset_id_',
 	ClimateSwingMode = 'climate_swing_mode_id_',
