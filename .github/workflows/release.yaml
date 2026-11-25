@@ -1,0 +1,168 @@
+name: Release Module
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 3.0.0, without v prefix)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark GitHub release as prerelease'
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: 'Preview diff and release notes without committing, tagging, or releasing'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  release:
+    name: Bump version, tag, and release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Validate version input
+        shell: bash
+        run: |
+          if [[ ! "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid semver version: ${{ inputs.version }}"
+            exit 1
+          fi
+          if git rev-parse "v${{ inputs.version }}" >/dev/null 2>&1; then
+            echo "::error::Tag v${{ inputs.version }} already exists"
+            exit 1
+          fi
+
+      - name: Detect Node runtime
+        id: runtime
+        shell: bash
+        run: |
+          NODE_RUNTIME=$(jq -r '.runtime.type' companion/manifest.json)
+          echo "node-version=${NODE_RUNTIME#node}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ steps.runtime.outputs.node-version }}
+
+      - name: Enable Corepack and install dependencies
+        shell: bash
+        run: |
+          corepack enable
+          yarn install --immutable
+
+      - name: Run lint, markdownlint, and build
+        shell: bash
+        run: |
+          yarn lint
+          yarn markdownlint-cli2 '**/*.md' '!node_modules' '!dist' '!pkg'
+          yarn build
+
+      - name: Update version, CHANGELOG.md, and extract release notes
+        env:
+          VERSION: ${{ inputs.version }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          node --input-type=module - <<'EOF'
+          import fs from 'node:fs'
+          import { execSync } from 'node:child_process'
+
+          const version = process.env.VERSION
+          const repo = process.env.REPO
+          const date = new Date().toISOString().slice(0, 10)
+
+          for (const file of ['package.json', 'companion/manifest.json']) {
+            const json = JSON.parse(fs.readFileSync(file, 'utf8'))
+            json.version = version
+            fs.writeFileSync(file, JSON.stringify(json, null, '\t') + '\n')
+          }
+
+          let changelog = fs.readFileSync('CHANGELOG.md', 'utf8').replace(/\r\n/g, '\n')
+          const unreleasedHeader = '## [Unreleased]'
+          const versionHeader = `## [${version}] - ${date}`
+
+          if (changelog.includes(unreleasedHeader) && !changelog.includes(`## [${version}]`)) {
+            changelog = changelog.replace(unreleasedHeader, `${unreleasedHeader}\n\n${versionHeader}`)
+
+            const prevTag = execSync('git describe --tags --abbrev=0', { encoding: 'utf8' }).trim()
+            const unreleasedLinkRe = /^\[Unreleased\]: .+$/m
+            const newLinks = `[Unreleased]: https://github.com/${repo}/compare/v${version}...HEAD\n[${version}]: https://github.com/${repo}/compare/${prevTag}...v${version}`
+            if (unreleasedLinkRe.test(changelog)) {
+              changelog = changelog.replace(unreleasedLinkRe, newLinks)
+            } else {
+              changelog = `${changelog.trimEnd()}\n\n${newLinks}\n`
+            }
+            fs.writeFileSync('CHANGELOG.md', changelog)
+          }
+
+          const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          const sectionRe = new RegExp(`^## \\[${escaped}\\][^\\n]*\\n([\\s\\S]*?)(?=\\n## \\[|\\n\\[[^\\]]+\\]: |$(?![\\r\\n]))`, 'm')
+          const sectionMatch = changelog.match(sectionRe)
+          const notes = sectionMatch ? sectionMatch[1].trim() : `Release v${version}`
+          fs.writeFileSync('release-notes.md', `${notes}\n`)
+          EOF
+
+      - name: Format updated files
+        shell: bash
+        run: yarn prettier --write package.json companion/manifest.json CHANGELOG.md
+
+      - name: Preview dry-run diff and release notes
+        if: ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          echo "=== git diff ==="
+          git diff package.json companion/manifest.json CHANGELOG.md
+          echo "=== release-notes.md ==="
+          cat release-notes.md
+          {
+            echo "## Dry Run Preview (\`v${{ inputs.version }}\`)"
+            echo ""
+            echo "### Diff"
+            echo '```diff'
+            git diff package.json companion/manifest.json CHANGELOG.md
+            echo '```'
+            echo ""
+            echo "### Release Notes"
+            cat release-notes.md
+          } >> "$GITHUB_STEP_SUMMARY"
+          rm -f release-notes.md
+
+      - name: Commit version bump
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain package.json companion/manifest.json CHANGELOG.md)" ]; then
+            git add package.json companion/manifest.json CHANGELOG.md
+            git commit -m "chore: release v${{ inputs.version }}"
+            git push origin HEAD:main
+          fi
+
+      - name: Create GitHub release and tag
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          EXTRA_ARGS=()
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            EXTRA_ARGS+=(--prerelease)
+          fi
+          gh release create "v${{ inputs.version }}" \
+            --target main \
+            --title "v${{ inputs.version }}" \
+            --notes-file release-notes.md \
+            "${EXTRA_ARGS[@]}"
+          rm -f release-notes.md
