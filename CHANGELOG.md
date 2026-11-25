@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Light** feedbacks: brightness percentage comparison (`Change from light brightness (%)`), color temperature (`Light color temperature` value and `Change from light color temperature` boolean with Mireds/Kelvin unit selection), and white/cold-white/warm-white channel percentage value feedbacks.
+
 ## [3.0.0] - 2026-11-25
 
 ### Added
