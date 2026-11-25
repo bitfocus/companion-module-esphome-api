@@ -13,7 +13,7 @@ export const SensorAdapter: EntityAdapter<SensorEntity> = {
 		return typeof instance === 'object' && instance !== null && (instance as any).type === 'sensor'
 	},
 
-	getFeedbackIds: (): string[] => [FeedbackId.SensorState],
+	getFeedbackIds: (): string[] => [FeedbackId.SensorState, FeedbackId.SensorValue],
 
 	createActions: (_client: EsphomeWrapper): CompanionActionDefinitions => {
 		return {}
@@ -33,6 +33,23 @@ export const SensorAdapter: EntityAdapter<SensorEntity> = {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event || event.state === undefined) return false
 					return compareNumber(feedback.options.value, feedback.options.comparitor, Number(event.state))
+				},
+			}
+
+			feedbacks[FeedbackId.SensorValue] = {
+				type: 'value',
+				name: 'Sensor value',
+				description: 'Outputs the current numeric value of the sensor',
+				options: [EntityPicker(sensors)],
+				callback: (feedback): number => {
+					const entityId = feedback.options.entity_id as string
+					const event = client.latest(entityId)
+					if (!event || event.state === undefined) return 0
+					const num = Number(event.state)
+					if (Number.isNaN(num)) return 0
+					const entity = client.getEntity(entityId) as (SensorEntity & { id: string }) | undefined
+					const decimals = typeof entity?.accuracyDecimals === 'number' ? entity.accuracyDecimals : -1
+					return decimals >= 0 ? Number(num.toFixed(decimals)) : num
 				},
 			}
 		}

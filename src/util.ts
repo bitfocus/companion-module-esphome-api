@@ -58,7 +58,9 @@ export enum FeedbackId {
 	LightWarmWhite = 'light_warm_white',
 	LockState = 'lock_state',
 	NumberState = 'number_state',
+	NumberValue = 'number_value',
 	SensorState = 'sensor_state',
+	SensorValue = 'sensor_value',
 	SwitchState = 'switch_state',
 	TextSensorValue = 'text_sensor_value',
 }
