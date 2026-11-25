@@ -9,7 +9,7 @@
 		"format": "prettier -w .",
 		"postinstall": "husky",
 		"package": "run build && companion-module-build",
-		"build": "rimraf dist && run build:main",
+		"build": "rimraf dist && node scripts/generate-icons.mjs && run build:main",
 		"build:main": "tsc -p tsconfig.build.json",
 		"build:watch": "tsc -p tsconfig.build.json --watch",
 		"lint:raw": "eslint",
@@ -46,6 +46,9 @@
 	},
 	"devDependencies": {
 		"@companion-module/tools": "^3.2.0",
+		"@iconify-json/mdi": "^1.2.3",
+		"@iconify/utils": "^3.1.7",
+		"@resvg/resvg-wasm": "^2.6.2",
 		"@types/node": "^22.20.5",
 		"eslint": "^10.12.0",
 		"husky": "^9.1.7",
