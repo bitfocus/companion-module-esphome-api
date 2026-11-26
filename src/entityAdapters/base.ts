@@ -3,6 +3,7 @@ import {
 	type ButtonGraphicsGaugeStop,
 	type CompanionActionDefinitions,
 	type CompanionFeedbackDefinitions,
+	type CompanionGraphicsElementValue,
 	type CompanionPresetDefinition,
 	type CompanionPresetDefinitions,
 	type CompanionPresetFeedbackStyleOverride,
@@ -67,6 +68,7 @@ export interface LayeredIconPresetOptions {
 	text: string | ExpressionOrValue<string>
 	icon?: string
 	iconVariant?: IconVariant
+	iconContrastVar?: string
 	iconSize?: number
 	bgcolor?: number | ExpressionOrValue<number>
 	textColor?: number | ExpressionOrValue<number>
@@ -80,7 +82,8 @@ export function makeLayeredIconPreset({
 	name,
 	text,
 	icon,
-	iconVariant = 'light',
+	iconVariant,
+	iconContrastVar,
 	iconSize = 32,
 	bgcolor = combineRgb(0, 0, 0),
 	textColor = combineRgb(255, 255, 255),
@@ -89,7 +92,21 @@ export function makeLayeredIconPreset({
 	feedbacks = [],
 	localVariables,
 }: LayeredIconPresetOptions): LayeredPreset {
-	const png64 = getMdiIconPng64(icon, iconVariant)
+	const resolvedVariant: IconVariant =
+		iconVariant ?? (typeof bgcolor === 'number' && isBrightRgbNumber(bgcolor) ? 'dark' : 'light')
+	const png64 = getMdiIconPng64(icon, resolvedVariant)
+	let base64Image: CompanionGraphicsElementValue<string | null> | undefined = png64
+	if (iconContrastVar && icon) {
+		const lightPng = getMdiIconPng64(icon, 'light')
+		const darkPng = getMdiIconPng64(icon, 'dark')
+		if (lightPng && darkPng) {
+			base64Image = {
+				isExpression: true,
+				value: `$(local:${iconContrastVar}) == '#000000' ? '${darkPng}' : '${lightPng}'`,
+			}
+		}
+	}
+
 	const elements: LayeredPreset['elements'] = [
 		{
 			type: 'box',
@@ -99,7 +116,7 @@ export function makeLayeredIconPreset({
 		},
 	]
 
-	if (png64) {
+	if (base64Image) {
 		const iconWidth = Math.min(80, Math.max(20, Math.round((iconSize / 72) * 100)))
 		const iconHeight = gauge ? 38 : 42
 		elements.push(
@@ -107,7 +124,7 @@ export function makeLayeredIconPreset({
 				type: 'image',
 				id: 'icon',
 				name: 'Icon',
-				base64Image: png64,
+				base64Image,
 				x: Math.round((100 - iconWidth) / 2),
 				y: 6,
 				width: iconWidth,
