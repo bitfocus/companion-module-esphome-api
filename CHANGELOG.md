@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-11-26
+
 ### Added
 
 - **Light** feedbacks: brightness percentage comparison (`Change from light brightness (%)`), color temperature (`Light color temperature` value and `Change from light color temperature` boolean with Mireds/Kelvin unit selection), and white/cold-white/warm-white channel percentage value feedbacks.
@@ -70,7 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial Companion v3 (`@companion-module/base`) release supporting ESPHome native API entity discovery, actions, and feedbacks over TCP with optional password authentication.
 
-[Unreleased]: https://github.com/bitfocus/companion-module-esphome-api/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/bitfocus/companion-module-esphome-api/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/bitfocus/companion-module-esphome-api/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/bitfocus/companion-module-esphome-api/compare/v2.0.1...v3.0.0
 [2.0.1]: https://github.com/bitfocus/companion-module-esphome-api/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/bitfocus/companion-module-esphome-api/releases/tag/v2.0.0
