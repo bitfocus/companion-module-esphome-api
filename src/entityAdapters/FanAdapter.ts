@@ -1,10 +1,11 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { FanDirection, FanEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
+import { AdapterPresets, EntityAdapter, makeLayeredFeedback, makeLayeredIconPreset, makePresetSection } from './base.js'
 import { ActionId, FeedbackId, OnOffToggle, PrefixedActionIds, PrefixedFeedbackIds } from '../util.js'
 import {
 	EntityPicker,
+	NumberComparitor,
 	NumberComparitorPicker,
 	NumberValuePicker,
 	OnOffTogglePicker,
@@ -52,6 +53,9 @@ export const FanAdapter: EntityAdapter<FanEntity> = {
 
 		for (const entity of fans) {
 			const fanEntity = entity as unknown as FanEntity & { id: string }
+			// ================================================================
+			// Speed Action
+			// ================================================================
 			if (fanEntity.supportsSpeed) {
 				const maxSpeed = fanEntity.supportedSpeedCount ?? 100
 				actions[PrefixedActionIds.FanSpeed + fanEntity.id] = {
@@ -74,6 +78,9 @@ export const FanAdapter: EntityAdapter<FanEntity> = {
 				}
 			}
 
+			// ================================================================
+			// Preset Mode Action
+			// ================================================================
 			const presetModes = (fanEntity as { supportedPresetModes?: string[] }).supportedPresetModes
 			if (presetModes && presetModes.length > 0) {
 				actions[PrefixedActionIds.FanPreset + fanEntity.id] = {
@@ -189,6 +196,9 @@ export const FanAdapter: EntityAdapter<FanEntity> = {
 
 		for (const entity of fans) {
 			const fanEntity = entity as unknown as FanEntity & { id: string }
+			// ================================================================
+			// Preset Mode Feedback
+			// ================================================================
 			const presetModes = (fanEntity as { supportedPresetModes?: string[] }).supportedPresetModes
 			if (presetModes && presetModes.length > 0) {
 				feedbacks[PrefixedFeedbackIds.FanPreset + fanEntity.id] = {
@@ -269,25 +279,245 @@ export const FanAdapter: EntityAdapter<FanEntity> = {
 		const presets: AdapterPresets['presets'] = {}
 		const ids: string[] = []
 		for (const entity of client.getEntities('fan')) {
-			const id = `preset_${entityVariableId(entity.id)}_toggle`
-			presets[id] = makeSimplePreset(
-				`${entity.name || entity.id} Toggle`,
-				entity.name || entity.id,
-				[
+			const fanEntity = entity as unknown as FanEntity & { id: string }
+			const label = fanEntity.name || fanEntity.id
+			const varId = entityVariableId(fanEntity.id)
+
+			// ================================================================
+			// Toggle Preset
+			// ================================================================
+			const toggleId = `preset_${varId}_toggle`
+			presets[toggleId] = makeLayeredIconPreset({
+				name: `${label} Toggle`,
+				text: label,
+				icon: 'fan-off',
+				steps: [
 					{
-						down: [{ actionId: ActionId.FanState, options: { entity_id: entity.id, state: OnOffToggle.Toggle } }],
+						down: [{ actionId: ActionId.FanState, options: { entity_id: fanEntity.id, state: OnOffToggle.Toggle } }],
 						up: [],
 					},
 				],
-				[
-					{
+				feedbacks: [
+					makeLayeredFeedback({
 						feedbackId: FeedbackId.FanState,
-						options: { entity_id: entity.id, state: true },
-						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
-					},
+						options: { entity_id: fanEntity.id, state: true },
+						bgcolor: combineRgb(0, 255, 0),
+						icon: 'fan',
+					}),
 				],
-			)
-			ids.push(id)
+			})
+			ids.push(toggleId)
+
+			// ================================================================
+			// Speed Display Preset
+			// ================================================================
+			if (fanEntity.supportsSpeed) {
+				const maxSpeed = fanEntity.supportedSpeedCount ?? 100
+				const speedFeedbacks = [
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.FanState,
+						options: { entity_id: fanEntity.id, state: true },
+						bgcolor: combineRgb(0, 255, 0),
+						icon: 'fan',
+					}),
+				]
+				if (maxSpeed > 0 && maxSpeed <= 5) {
+					for (let level = 1; level <= Math.min(3, maxSpeed); level++) {
+						speedFeedbacks.push(
+							makeLayeredFeedback({
+								feedbackId: FeedbackId.FanSpeedCompare,
+								options: { entity_id: fanEntity.id, comparitor: NumberComparitor.Equal, value: level },
+								bgcolor: combineRgb(0, 255, 0),
+								icon: `fan-speed-${level}`,
+							}),
+						)
+					}
+				}
+
+				const speedSteps: Array<{ down: Array<{ actionId: string; options: Record<string, any> }>; up: never[] }> = []
+				if (maxSpeed > 0 && maxSpeed <= 5) {
+					for (let level = 1; level <= maxSpeed; level++) {
+						speedSteps.push({
+							down: [{ actionId: PrefixedActionIds.FanSpeed + fanEntity.id, options: { speedLevel: level } }],
+							up: [],
+						})
+					}
+					speedSteps.push({
+						down: [{ actionId: ActionId.FanState, options: { entity_id: fanEntity.id, state: OnOffToggle.Off } }],
+						up: [],
+					})
+				}
+
+				const speedId = `preset_${varId}_speed`
+				presets[speedId] = makeLayeredIconPreset({
+					name: `${label} Speed`,
+					text: `${label}\n$(local:fan_speed)`,
+					icon: 'fan-off',
+					gauge: {
+						value: { isExpression: true, value: '$(local:fan_speed)' },
+						min: 0,
+						max: maxSpeed,
+					},
+					steps: speedSteps,
+					feedbacks: speedFeedbacks,
+					localVariables: [
+						{
+							variableType: 'feedback',
+							variableName: 'fan_speed',
+							feedbackId: FeedbackId.FanSpeed,
+							options: { entity_id: fanEntity.id },
+						},
+					],
+				})
+				ids.push(speedId)
+
+				if (maxSpeed > 0 && maxSpeed <= 5) {
+					const threeSpeedLabels = ['Low', 'Medium', 'High']
+					for (let level = 1; level <= maxSpeed; level++) {
+						const speedLabel = maxSpeed === 3 ? threeSpeedLabels[level - 1] : `Speed ${level}`
+						const speedIcon = level <= 3 ? `fan-speed-${level}` : 'fan'
+						const levelId = `preset_${varId}_speed_${level}`
+						presets[levelId] = makeLayeredIconPreset({
+							name: `${label} ${speedLabel}`,
+							text: `${label}\n${speedLabel}`,
+							icon: speedIcon,
+							steps: [
+								{
+									down: [{ actionId: PrefixedActionIds.FanSpeed + fanEntity.id, options: { speedLevel: level } }],
+									up: [],
+								},
+							],
+							feedbacks: [
+								makeLayeredFeedback({
+									feedbackId: FeedbackId.FanSpeedCompare,
+									options: { entity_id: fanEntity.id, comparitor: NumberComparitor.Equal, value: level },
+									bgcolor: combineRgb(0, 255, 0),
+									icon: speedIcon,
+								}),
+							],
+						})
+						ids.push(levelId)
+					}
+				}
+			}
+
+			// ================================================================
+			// Oscillation Preset
+			// ================================================================
+			if (fanEntity.supportsOscillation) {
+				const oscId = `preset_${varId}_oscillate`
+				presets[oscId] = makeLayeredIconPreset({
+					name: `${label} Oscillate`,
+					text: `${label}\nOscillate`,
+					icon: 'arrow-oscillating-off',
+					steps: [
+						{
+							down: [
+								{ actionId: ActionId.FanOscillating, options: { entity_id: fanEntity.id, state: OnOffToggle.Toggle } },
+							],
+							up: [],
+						},
+					],
+					feedbacks: [
+						makeLayeredFeedback({
+							feedbackId: FeedbackId.FanOscillating,
+							options: { entity_id: fanEntity.id, state: true },
+							bgcolor: combineRgb(0, 255, 0),
+							icon: 'arrow-oscillating',
+						}),
+					],
+				})
+				ids.push(oscId)
+			}
+
+			// ================================================================
+			// Direction Presets
+			// ================================================================
+			if (fanEntity.supportsDirection) {
+				const fwdId = `preset_${varId}_dir_fwd`
+				presets[fwdId] = makeLayeredIconPreset({
+					name: `${label} Forward`,
+					text: `${label}\nForward`,
+					icon: 'sync',
+					steps: [
+						{
+							down: [
+								{
+									actionId: ActionId.FanDirection,
+									options: { entity_id: fanEntity.id, direction: FanDirection.FORWARD },
+								},
+							],
+							up: [],
+						},
+					],
+					feedbacks: [
+						makeLayeredFeedback({
+							feedbackId: FeedbackId.FanDirection,
+							options: { entity_id: fanEntity.id, direction: FanDirection.FORWARD },
+							bgcolor: combineRgb(0, 255, 0),
+							icon: 'sync',
+						}),
+					],
+				})
+
+				const revId = `preset_${varId}_dir_rev`
+				presets[revId] = makeLayeredIconPreset({
+					name: `${label} Reverse`,
+					text: `${label}\nReverse`,
+					icon: 'sync',
+					steps: [
+						{
+							down: [
+								{
+									actionId: ActionId.FanDirection,
+									options: { entity_id: fanEntity.id, direction: FanDirection.REVERSE },
+								},
+							],
+							up: [],
+						},
+					],
+					feedbacks: [
+						makeLayeredFeedback({
+							feedbackId: FeedbackId.FanDirection,
+							options: { entity_id: fanEntity.id, direction: FanDirection.REVERSE },
+							bgcolor: combineRgb(0, 255, 0),
+							icon: 'sync',
+						}),
+					],
+				})
+				ids.push(fwdId, revId)
+			}
+
+			// ================================================================
+			// Preset Mode Presets
+			// ================================================================
+			const presetModes = (fanEntity as { supportedPresetModes?: string[] }).supportedPresetModes
+			if (presetModes && presetModes.length > 0) {
+				for (const mode of presetModes) {
+					const safeMode = mode.replace(/[^a-zA-Z0-9_]/g, '_')
+					const presetId = `preset_${varId}_preset_${safeMode}`
+					presets[presetId] = makeLayeredIconPreset({
+						name: `${label}: ${mode}`,
+						text: `${label}\n${mode}`,
+						icon: 'fan',
+						steps: [
+							{
+								down: [{ actionId: PrefixedActionIds.FanPreset + fanEntity.id, options: { presetMode: mode } }],
+								up: [],
+							},
+						],
+						feedbacks: [
+							makeLayeredFeedback({
+								feedbackId: PrefixedFeedbackIds.FanPreset + fanEntity.id,
+								options: { presetMode: mode },
+								bgcolor: combineRgb(0, 255, 0),
+								icon: 'fan',
+							}),
+						],
+					})
+					ids.push(presetId)
+				}
+			}
 		}
 		return { sections: makePresetSection('fans', 'Fans', ids), presets }
 	},

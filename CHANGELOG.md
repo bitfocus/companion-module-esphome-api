@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Binary Sensor** preset: upgraded to a layered icon preset with `deviceClass`-aware MDI icons (including active/inactive state pairs) and feedback colors (alert/safety red, opening amber, activity/detection cyan, cold blue, status/power green, connectivity green/red).
 - **Lock** presets: upgraded Lock and Unlock to layered icon presets with `LOCKING`/`UNLOCKING` (amber) and `JAMMED` (red alert) feedbacks, and added an **Open** preset for `supportsOpen` locks.
 - **Cover** presets: upgraded Open/Close to layered icon presets with `CoverOperation` (`IS_OPENING`/`IS_CLOSING` amber) feedbacks, and added **Stop** (`supportsStop`) and **Position %** (with horizontal gauge) presets.
+- **Fan** presets: upgraded Toggle to a layered icon preset (`fan-off`/`fan`), and added **Speed** (with horizontal gauge, speed-level icons, and step-cycling `1..N → Off` when `supportedSpeedCount <= 5`, plus discrete Low/Medium/High or Speed 1..N presets), **Oscillate** (`arrow-oscillating-off`/`arrow-oscillating`), **Direction** (Forward/Reverse), and **Preset Mode** presets.
 
 ## [3.0.0] - 2026-11-25
 
