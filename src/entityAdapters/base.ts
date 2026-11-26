@@ -163,8 +163,9 @@ export function makeLayeredIconPreset({
 			value: gauge.value,
 			roundedEnds: true,
 			trackStyle: 'dimmed',
+			trackWidth: 25,
 			fillEnabled: true,
-			fillWidth: 8,
+			fillWidth: 100,
 			multiColour: true,
 			stops: gauge.stops ?? [{ value: 0, color: combineRgb(0, 180, 255), gradient: false }],
 		})
