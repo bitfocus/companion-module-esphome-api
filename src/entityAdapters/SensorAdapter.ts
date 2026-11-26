@@ -1,10 +1,48 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { SensorEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
+import { AdapterPresets, EntityAdapter, makeLayeredIconPreset, makePresetSection } from './base.js'
+import { getMdiIconPng64 } from '../icons.js'
 import { FeedbackId } from '../util.js'
 import { EntityPicker, NumberComparitorPicker, NumberValuePicker, compareNumber } from '../choices.js'
 import { entityVariableId } from '../variables.js'
+
+const SENSOR_DEVICE_CLASS_ICONS: Record<string, string> = {
+	apparent_power: 'flash',
+	atmospheric_pressure: 'gauge',
+	battery: 'percent',
+	carbon_dioxide: 'molecule-co2',
+	carbon_monoxide: 'molecule-co',
+	current: 'current-ac',
+	distance: 'ruler',
+	duration: 'clock-outline',
+	energy: 'lightning-bolt',
+	frequency: 'sine-wave',
+	humidity: 'water-percent',
+	illuminance: 'weather-sunny',
+	moisture: 'water-percent',
+	power: 'flash',
+	pressure: 'gauge',
+	reactive_power: 'flash',
+	signal_strength: 'wifi',
+	speed: 'weather-windy',
+	temperature: 'thermometer',
+	voltage: 'sine-wave',
+	wind_speed: 'weather-windy',
+}
+
+function getSensorIcon(entity: SensorEntity): string {
+	if (entity.icon && getMdiIconPng64(entity.icon)) {
+		return entity.icon
+	}
+	if (entity.deviceClass && SENSOR_DEVICE_CLASS_ICONS[entity.deviceClass]) {
+		return SENSOR_DEVICE_CLASS_ICONS[entity.deviceClass]
+	}
+	const unit = entity.unitOfMeasurement?.trim()
+	if (unit === '°C' || unit === '°F' || unit === 'K') return 'thermometer'
+	if (unit === '%') return 'percent'
+	return 'gauge'
+}
 
 export const SensorAdapter: EntityAdapter<SensorEntity> = {
 	entityType: 'sensor',
@@ -60,9 +98,45 @@ export const SensorAdapter: EntityAdapter<SensorEntity> = {
 		const presets: AdapterPresets['presets'] = {}
 		const ids: string[] = []
 		for (const entity of client.getEntities('sensor')) {
-			const varId = entityVariableId(entity.id)
+			const sensorEntity = entity as unknown as SensorEntity & { id: string }
+			const varId = entityVariableId(sensorEntity.id)
 			const id = `preset_${varId}_display`
-			presets[id] = makeSimplePreset(entity.name || entity.id, `${entity.name || entity.id}\n$(${connLabel}:${varId})`)
+			const unit = sensorEntity.unitOfMeasurement ? ` ${sensorEntity.unitOfMeasurement}` : ''
+			const isPercent =
+				sensorEntity.unitOfMeasurement?.trim() === '%' ||
+				sensorEntity.deviceClass === 'battery' ||
+				sensorEntity.deviceClass === 'humidity' ||
+				sensorEntity.deviceClass === 'moisture'
+
+			const batteryStops = [
+				{ value: 0, color: combineRgb(200, 0, 0), gradient: false },
+				{ value: 20, color: combineRgb(255, 191, 0), gradient: true },
+				{ value: 50, color: combineRgb(0, 200, 0), gradient: true },
+			]
+
+			presets[id] = makeLayeredIconPreset({
+				name: sensorEntity.name || sensorEntity.id,
+				text: `${sensorEntity.name || sensorEntity.id}\n$(${connLabel}:${varId})${unit}`,
+				icon: getSensorIcon(sensorEntity),
+				...(isPercent
+					? {
+							gauge: {
+								value: { isExpression: true, value: '$(local:sensor_value)' },
+								min: 0,
+								max: 100,
+								...(sensorEntity.deviceClass === 'battery' ? { stops: batteryStops } : {}),
+							},
+							localVariables: [
+								{
+									variableType: 'feedback',
+									variableName: 'sensor_value',
+									feedbackId: FeedbackId.SensorValue,
+									options: { entity_id: sensorEntity.id },
+								},
+							],
+						}
+					: {}),
+			})
 			ids.push(id)
 		}
 		return { sections: makePresetSection('sensors', 'Sensors', ids), presets }
