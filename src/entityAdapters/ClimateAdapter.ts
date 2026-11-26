@@ -1,7 +1,15 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { ClimateAction, ClimateEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
+import {
+	AdapterPresets,
+	EntityAdapter,
+	LayeredFeedback,
+	LayeredPreset,
+	makeLayeredFeedback,
+	makeLayeredIconPreset,
+	makePresetSection,
+} from './base.js'
 import { FeedbackId, PrefixedActionIds, PrefixedFeedbackIds } from '../util.js'
 import {
 	AllClimateModes,
@@ -397,7 +405,7 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 					const event = client.latest(climateEntity.id)
 					if (!event) return false
 					const currentMode = event.mode ?? ClimateMode.OFF
-					return currentMode === feedback.options.mode
+					return Number(currentMode) === Number(feedback.options.mode)
 				},
 			}
 
@@ -430,7 +438,8 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 							return event.customFanMode === val.slice(7)
 						}
 						if (val.startsWith('std:')) {
-							return event.fanMode === Number(val.slice(4))
+							// Proto3 omits enum 0 (ON) on the wire; guard against customFanMode so custom modes don't falsely match std:0.
+							return !event.customFanMode && Number(event.fanMode ?? 0) === Number(val.slice(4))
 						}
 						return false
 					},
@@ -466,7 +475,8 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 							return event.customPreset === val.slice(7)
 						}
 						if (val.startsWith('std:')) {
-							return event.preset === Number(val.slice(4))
+							// Proto3 omits enum 0 (NONE) on the wire; guard against customPreset so custom presets don't falsely match std:0.
+							return !event.customPreset && Number(event.preset ?? 0) === Number(val.slice(4))
 						}
 						return false
 					},
@@ -492,7 +502,8 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 					callback: (feedback): boolean => {
 						const event = client.latest(climateEntity.id)
 						if (!event) return false
-						return event.swingMode === feedback.options.swingMode
+						// Proto3 omits enum 0 (OFF) on the wire.
+						return Number(event.swingMode ?? 0) === Number(feedback.options.swingMode)
 					},
 				}
 			}
@@ -504,27 +515,255 @@ export const ClimateAdapter: EntityAdapter<ClimateEntity> = {
 	createPresets: (client: EsphomeWrapper): AdapterPresets => {
 		const presets: AdapterPresets['presets'] = {}
 		const ids: string[] = []
+		const modeIcons: Record<number, string> = {
+			[ClimateMode.OFF]: 'power',
+			[ClimateMode.HEAT_COOL]: 'thermostat',
+			[ClimateMode.COOL]: 'snowflake',
+			[ClimateMode.HEAT]: 'fire',
+			[ClimateMode.FAN_ONLY]: 'fan',
+			[ClimateMode.DRY]: 'water-percent',
+			[ClimateMode.AUTO]: 'thermostat',
+		}
+		const modeColors: Record<number, number> = {
+			[ClimateMode.COOL]: combineRgb(0, 120, 255),
+			[ClimateMode.HEAT]: combineRgb(230, 90, 0),
+			[ClimateMode.FAN_ONLY]: combineRgb(0, 255, 0),
+			[ClimateMode.DRY]: combineRgb(255, 191, 0),
+		}
+
 		for (const entity of client.getEntities('climate')) {
 			const climateEntity = entity as unknown as ClimateEntity & { id: string }
+			const entityLabel = climateEntity.name || climateEntity.id
+			const varId = entityVariableId(climateEntity.id)
+
+			// ================================================================
+			// Thermostat Status Display Preset
+			// ================================================================
+			const localVariables: NonNullable<LayeredPreset['localVariables']> = []
+			let targetText: string
+			if (climateEntity.supportsTwoPointTargetTemperature) {
+				localVariables.push(
+					{
+						variableType: 'feedback',
+						variableName: 'climate_target_low',
+						feedbackId: FeedbackId.ClimateTargetTempLow,
+						options: { entity_id: climateEntity.id },
+					},
+					{
+						variableType: 'feedback',
+						variableName: 'climate_target_high',
+						feedbackId: FeedbackId.ClimateTargetTempHigh,
+						options: { entity_id: climateEntity.id },
+					},
+				)
+				targetText = '$(local:climate_target_low)° ↔ $(local:climate_target_high)°'
+			} else {
+				localVariables.push({
+					variableType: 'feedback',
+					variableName: 'climate_target_temp',
+					feedbackId: FeedbackId.ClimateTargetTemp,
+					options: { entity_id: climateEntity.id },
+				})
+				targetText = 'Set: $(local:climate_target_temp)°'
+			}
+
+			let humText = ''
+			if (climateEntity.supportsCurrentHumidity) {
+				localVariables.push({
+					variableType: 'feedback',
+					variableName: 'climate_current_humidity',
+					feedbackId: FeedbackId.ClimateCurrentHumidity,
+					options: { entity_id: climateEntity.id },
+				})
+				humText = '$(local:climate_current_humidity)%'
+			}
+
+			const currentParts: string[] = []
+			if (climateEntity.supportsCurrentTemperature) {
+				localVariables.push({
+					variableType: 'feedback',
+					variableName: 'climate_current_temp',
+					feedbackId: FeedbackId.ClimateCurrentTemp,
+					options: { entity_id: climateEntity.id },
+				})
+				currentParts.push('$(local:climate_current_temp)°')
+			}
+			if (humText) {
+				currentParts.push(humText)
+			}
+
+			const statusLines = [entityLabel]
+			if (currentParts.length > 0) {
+				statusLines.push(currentParts.join(' · '))
+			}
+			statusLines.push(targetText)
+			const statusText = statusLines.join('\n')
+
+			const statusFeedbacks: LayeredFeedback[] = []
+			if (climateEntity.supportsAction) {
+				statusFeedbacks.push(
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.ClimateAction,
+						options: { entity_id: climateEntity.id, action: ClimateAction.HEATING },
+						bgcolor: combineRgb(230, 90, 0),
+						icon: 'fire',
+					}),
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.ClimateAction,
+						options: { entity_id: climateEntity.id, action: ClimateAction.COOLING },
+						bgcolor: combineRgb(0, 120, 255),
+						icon: 'snowflake',
+					}),
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.ClimateAction,
+						options: { entity_id: climateEntity.id, action: ClimateAction.DRYING },
+						bgcolor: combineRgb(255, 191, 0),
+						icon: 'water-percent',
+					}),
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.ClimateAction,
+						options: { entity_id: climateEntity.id, action: ClimateAction.FAN },
+						bgcolor: combineRgb(0, 255, 0),
+						icon: 'fan',
+					}),
+				)
+			}
+
+			const statusId = `preset_${varId}_status`
+			presets[statusId] = makeLayeredIconPreset({
+				name: `${entityLabel} Status`,
+				text: statusText,
+				icon: 'thermostat',
+				feedbacks: statusFeedbacks,
+				localVariables,
+			})
+			ids.push(statusId)
+
+			// ================================================================
+			// Mode Presets
+			// ================================================================
 			const modes =
 				climateEntity.supportedModes && climateEntity.supportedModes.length
 					? [...climateEntity.supportedModes]
 					: [ClimateMode.OFF]
 			for (const mode of modes) {
 				const label = ClimateModeLabels[mode] ?? String(mode)
-				const id = `preset_${entityVariableId(climateEntity.id)}_mode_${mode}`
-				presets[id] = makeSimplePreset(
-					`${climateEntity.name || climateEntity.id}: ${label}`,
-					`${climateEntity.name || climateEntity.id}\n${label}`,
-					[{ down: [{ actionId: PrefixedActionIds.ClimateMode + climateEntity.id, options: { mode } }], up: [] }],
-					[
-						{
+				const icon = modeIcons[mode] ?? 'thermostat'
+				const id = `preset_${varId}_mode_${mode}`
+				presets[id] = makeLayeredIconPreset({
+					name: `${entityLabel}: ${label}`,
+					text: `${entityLabel}\n${label}`,
+					icon,
+					steps: [
+						{ down: [{ actionId: PrefixedActionIds.ClimateMode + climateEntity.id, options: { mode } }], up: [] },
+					],
+					feedbacks: [
+						makeLayeredFeedback({
 							feedbackId: PrefixedFeedbackIds.ClimateMode + climateEntity.id,
 							options: { mode },
-							style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
+							bgcolor: modeColors[mode] ?? combineRgb(0, 255, 0),
+							icon,
+						}),
+					],
+				})
+				ids.push(id)
+			}
+
+			// ================================================================
+			// Fan Mode Presets
+			// ================================================================
+			const fanModes = [
+				...(climateEntity.supportedFanModes ?? []).map((m) => ({
+					id: `std:${m}`,
+					label: ClimateFanModeLabels[m] ?? String(m),
+				})),
+				...(climateEntity.supportedCustomFanModes ?? []).map((m) => ({ id: `custom:${m}`, label: m })),
+			]
+			for (const fm of fanModes) {
+				const safeId = fm.id.replace(/[^a-zA-Z0-9_]/g, '_')
+				const id = `preset_${varId}_fan_${safeId}`
+				presets[id] = makeLayeredIconPreset({
+					name: `${entityLabel} Fan: ${fm.label}`,
+					text: `${entityLabel}\n${fm.label}`,
+					icon: 'fan',
+					steps: [
+						{
+							down: [{ actionId: PrefixedActionIds.ClimateFanMode + climateEntity.id, options: { fanMode: fm.id } }],
+							up: [],
 						},
 					],
-				)
+					feedbacks: [
+						makeLayeredFeedback({
+							feedbackId: PrefixedFeedbackIds.ClimateFanMode + climateEntity.id,
+							options: { fanMode: fm.id },
+							bgcolor: combineRgb(0, 255, 0),
+							icon: 'fan',
+						}),
+					],
+				})
+				ids.push(id)
+			}
+
+			// ================================================================
+			// Preset Mode Presets
+			// ================================================================
+			const climatePresets = [
+				...(climateEntity.supportedPresets ?? []).map((p) => ({
+					id: `std:${p}`,
+					label: ClimatePresetLabels[p] ?? String(p),
+				})),
+				...(climateEntity.supportedCustomPresets ?? []).map((p) => ({ id: `custom:${p}`, label: p })),
+			]
+			for (const cp of climatePresets) {
+				const safeId = cp.id.replace(/[^a-zA-Z0-9_]/g, '_')
+				const id = `preset_${varId}_preset_${safeId}`
+				presets[id] = makeLayeredIconPreset({
+					name: `${entityLabel} Preset: ${cp.label}`,
+					text: `${entityLabel}\n${cp.label}`,
+					icon: 'thermostat',
+					steps: [
+						{
+							down: [{ actionId: PrefixedActionIds.ClimatePreset + climateEntity.id, options: { preset: cp.id } }],
+							up: [],
+						},
+					],
+					feedbacks: [
+						makeLayeredFeedback({
+							feedbackId: PrefixedFeedbackIds.ClimatePreset + climateEntity.id,
+							options: { preset: cp.id },
+							bgcolor: combineRgb(0, 255, 0),
+							icon: 'thermostat',
+						}),
+					],
+				})
+				ids.push(id)
+			}
+
+			// ================================================================
+			// Swing Mode Presets
+			// ================================================================
+			for (const swingMode of climateEntity.supportedSwingModes ?? []) {
+				const swingLabel = ClimateSwingModeLabels[swingMode] ?? String(swingMode)
+				const id = `preset_${varId}_swing_${swingMode}`
+				presets[id] = makeLayeredIconPreset({
+					name: `${entityLabel} Swing: ${swingLabel}`,
+					text: `${entityLabel}\n${swingLabel}`,
+					icon: 'arrow-oscillating',
+					steps: [
+						{
+							down: [{ actionId: PrefixedActionIds.ClimateSwingMode + climateEntity.id, options: { swingMode } }],
+							up: [],
+						},
+					],
+					feedbacks: [
+						makeLayeredFeedback({
+							feedbackId: PrefixedFeedbackIds.ClimateSwingMode + climateEntity.id,
+							options: { swingMode },
+							bgcolor: combineRgb(0, 255, 0),
+							icon: 'arrow-oscillating',
+						}),
+					],
+				})
 				ids.push(id)
 			}
 		}

@@ -99,8 +99,12 @@ export class EsphomeWrapper {
 
 	private handleTelemetryEvent(event: any): void {
 		if (!event || !event.entity) return
-		this.latestState.set(event.entity, event)
-		this.emit('state', event.entity, event.type)
+		const matched = this._client
+			?.getEntitiesWithIds()
+			.find((e) => e.id === event.entity || (e.type === event.type && e.name === event.entity))
+		const entityId = matched?.id ?? event.entity
+		this.latestState.set(entityId, event)
+		this.emit('state', entityId, event.type)
 	}
 
 	getEntities(type?: string): Array<Entity & { id: string }> {

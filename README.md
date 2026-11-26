@@ -58,4 +58,9 @@ Companion config/action/feedback migrations live in `src/upgrades/` as numbered,
 - Export each script as `upgradeNNNN_<camelCaseName>` (matching its file prefix).
 - **Append-only**: Companion tracks which upgrade scripts have run per connection by array index in `UpgradeScripts`. Never reorder, remove, or insert before existing entries—always append new scripts to the end.
 
+### Icons
+
+Preset icons are pre-rendered at build time (`node scripts/generate-icons.mjs`) from [Material Design Icons][mdi] (`@iconify-json/mdi`, Apache-2.0) into `src/generated/icons.ts`.
+
 [esphome]: https://esphome.io
+[mdi]: https://pictogrammers.com/library/mdi/

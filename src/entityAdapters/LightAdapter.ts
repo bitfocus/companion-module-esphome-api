@@ -1,10 +1,11 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { ColorMode, LightEntity } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
-import { ActionId, FeedbackId, OnOffToggle, PrefixedActionIds, PrefixedFeedbackIds } from '../util.js'
+import { AdapterPresets, EntityAdapter, makeLayeredFeedback, makeLayeredIconPreset, makePresetSection } from './base.js'
+import { ActionId, FeedbackId, OnOffToggle, PrefixedActionIds, PrefixedFeedbackIds, isBrightRgb } from '../util.js'
 import {
 	EntityPicker,
+	NumberComparitor,
 	NumberComparitorPicker,
 	NumberValuePicker,
 	OnOffPicker,
@@ -34,7 +35,7 @@ function supportsWhite(entity: unknown): boolean {
 }
 
 function supportsColorTemp(entity: unknown): boolean {
-	return hasColorModeBit(entity, COLOR_MODE_COLOR_TEMP_BIT)
+	return hasColorModeBit(entity, COLOR_MODE_COLOR_TEMP_BIT | COLOR_MODE_COLD_WARM_WHITE_BIT)
 }
 
 function supportsColdWarmWhite(entity: unknown): boolean {
@@ -91,6 +92,29 @@ function parseColorToRgb(color: unknown): { r: number; g: number; b: number } | 
 		}
 	}
 	return undefined
+}
+
+function miredsToRgb(mireds: number): { r: number; g: number; b: number } {
+	const temp = Math.min(40000, Math.max(1000, 1_000_000 / mireds)) / 100
+	const clamp = (v: number): number => Math.round(Math.min(255, Math.max(0, v)))
+	const r = temp <= 66 ? 255 : 329.698727446 * Math.pow(temp - 60, -0.1332047592)
+	const g =
+		temp <= 66 ? 99.4708025861 * Math.log(temp) - 161.1195681661 : 288.1221695283 * Math.pow(temp - 60, -0.0755148492)
+	const b = temp >= 66 ? 255 : temp <= 19 ? 0 : 138.5177312231 * Math.log(temp - 10) - 305.0447927307
+	return { r: clamp(r), g: clamp(g), b: clamp(b) }
+}
+
+function getEffectiveRgb255(event: any): { r: number; g: number; b: number } {
+	const colorMode = Number(event.colorMode ?? 0)
+	const isRgbActive = colorMode === 0 || (colorMode & COLOR_MODE_RGB_BIT) !== 0
+	if (!isRgbActive && Number(event.colorTemperature) > 0) {
+		return miredsToRgb(Number(event.colorTemperature))
+	}
+	return {
+		r: Math.round(Math.min(1, Math.max(0, Number(event.red ?? 0))) * 255),
+		g: Math.round(Math.min(1, Math.max(0, Number(event.green ?? 0))) * 255),
+		b: Math.round(Math.min(1, Math.max(0, Number(event.blue ?? 0))) * 255),
+	}
 }
 
 export const LightAdapter: EntityAdapter<LightEntity> = {
@@ -527,11 +551,9 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event || !event.state) return '#000000'
 
-					const toHex = (v: unknown): string =>
-						Math.round(Math.min(1, Math.max(0, Number(v ?? 0))) * 255)
-							.toString(16)
-							.padStart(2, '0')
-					return `#${toHex(event.red)}${toHex(event.green)}${toHex(event.blue)}`
+					const { r, g, b } = getEffectiveRgb255(event)
+					const toHex = (v: number): string => v.toString(16).padStart(2, '0')
+					return `#${toHex(r)}${toHex(g)}${toHex(b)}`
 				},
 			}
 
@@ -544,11 +566,8 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 					const event = client.latest(feedback.options.entity_id as string)
 					if (!event || !event.state) return '#ffffff'
 
-					const r = Math.min(1, Math.max(0, Number(event.red ?? 0))) * 255
-					const g = Math.min(1, Math.max(0, Number(event.green ?? 0))) * 255
-					const b = Math.min(1, Math.max(0, Number(event.blue ?? 0))) * 255
-					const luminance = 0.299 * r + 0.587 * g + 0.114 * b
-					return luminance > 150 ? '#000000' : '#ffffff'
+					const { r, g, b } = getEffectiveRgb255(event)
+					return isBrightRgb(r, g, b) ? '#000000' : '#ffffff'
 				},
 			}
 		}
@@ -560,60 +579,95 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 		const lightIds: string[] = []
 
 		for (const entity of client.getEntities('light')) {
-			const toggleId = `preset_${entityVariableId(entity.id)}_toggle`
-			presets[toggleId] = makeSimplePreset(
-				`${entity.name || entity.id} Toggle`,
-				entity.name || entity.id,
-				[
+			const lightEntity = entity as unknown as LightEntity & { id: string }
+			const label = lightEntity.name || lightEntity.id
+			const varId = entityVariableId(lightEntity.id)
+
+			// ================================================================
+			// Toggle Preset
+			// ================================================================
+			const toggleId = `preset_${varId}_toggle`
+			presets[toggleId] = makeLayeredIconPreset({
+				name: `${label} Toggle`,
+				text: label,
+				icon: 'lightbulb-outline',
+				steps: [
 					{
 						down: [
 							{
 								actionId: ActionId.LightState,
-								options: { entity_id: entity.id, state: OnOffToggle.Toggle, transition: 0 },
+								options: { entity_id: lightEntity.id, state: OnOffToggle.Toggle, transition: 0 },
 							},
 						],
 						up: [],
 					},
 				],
-				[
-					{
+				feedbacks: [
+					makeLayeredFeedback({
 						feedbackId: FeedbackId.LightState,
-						options: { entity_id: entity.id, state: true },
-						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
-					},
+						options: { entity_id: lightEntity.id, state: true },
+						bgcolor: combineRgb(0, 255, 0),
+						icon: 'lightbulb-on',
+					}),
 				],
-			)
+			})
 			lightIds.push(toggleId)
 
-			if (supportsRgb(entity)) {
-				const colorId = `preset_${entityVariableId(entity.id)}_color`
-				presets[colorId] = {
-					type: 'layered',
-					name: `${entity.name || entity.id} Color`,
-					elements: [
-						{
-							type: 'box',
-							id: 'bg',
-							name: 'Background',
-							color: { isExpression: true, value: '$(local:light_color)' },
-						},
-						{
-							type: 'text',
-							id: 'label',
-							name: 'Label',
-							text: `${entity.name || entity.id}\nColor`,
-							color: { isExpression: true, value: '$(local:light_text_color)' },
-							halign: 'center',
-							valign: 'center',
-						},
-					],
-					feedbacks: [],
+			// ================================================================
+			// Brightness Display Preset
+			// ================================================================
+			if (supportsBrightness(lightEntity)) {
+				const brightnessId = `preset_${varId}_brightness`
+				presets[brightnessId] = makeLayeredIconPreset({
+					name: `${label} Brightness`,
+					text: `${label}\n$(local:light_brightness)%`,
+					icon: 'brightness-6',
+					gauge: {
+						value: { isExpression: true, value: '$(local:light_brightness)' },
+						min: 0,
+						max: 100,
+					},
 					steps: [
 						{
 							down: [
 								{
 									actionId: ActionId.LightState,
-									options: { entity_id: entity.id, state: OnOffToggle.Toggle, transition: 0 },
+									options: { entity_id: lightEntity.id, state: OnOffToggle.Toggle, transition: 0 },
+								},
+							],
+							up: [],
+						},
+					],
+					localVariables: [
+						{
+							variableType: 'feedback',
+							variableName: 'light_brightness',
+							feedbackId: FeedbackId.LightBrightness,
+							options: { entity_id: lightEntity.id },
+						},
+					],
+				})
+				lightIds.push(brightnessId)
+			}
+
+			// ================================================================
+			// RGB Color Sync Preset
+			// ================================================================
+			if (supportsRgb(lightEntity)) {
+				const colorId = `preset_${varId}_color`
+				presets[colorId] = makeLayeredIconPreset({
+					name: `${label} Color`,
+					text: `${label}\nColor`,
+					icon: 'palette',
+					iconContrastVar: 'light_text_color',
+					bgcolor: { isExpression: true, value: '$(local:light_color)' },
+					textColor: { isExpression: true, value: '$(local:light_text_color)' },
+					steps: [
+						{
+							down: [
+								{
+									actionId: ActionId.LightState,
+									options: { entity_id: lightEntity.id, state: OnOffToggle.Toggle, transition: 0 },
 								},
 							],
 							up: [],
@@ -624,17 +678,99 @@ export const LightAdapter: EntityAdapter<LightEntity> = {
 							variableType: 'feedback',
 							variableName: 'light_color',
 							feedbackId: FeedbackId.LightColorSync,
-							options: { entity_id: entity.id },
+							options: { entity_id: lightEntity.id },
 						},
 						{
 							variableType: 'feedback',
 							variableName: 'light_text_color',
 							feedbackId: FeedbackId.LightContrastColor,
-							options: { entity_id: entity.id },
+							options: { entity_id: lightEntity.id },
 						},
 					],
-				}
+				})
 				lightIds.push(colorId)
+			}
+
+			// ================================================================
+			// Color Temperature Presets
+			// ================================================================
+			if (supportsColorTemp(lightEntity)) {
+				const minMireds = lightEntity.minMireds ?? 153
+				const maxMireds = lightEntity.maxMireds ?? 500
+				const clampMireds = (m: number): number => Math.round(Math.min(maxMireds, Math.max(minMireds, m)))
+				const tempRgb = (mireds: number): number => {
+					const { r, g, b } = miredsToRgb(mireds)
+					return combineRgb(r, g, b)
+				}
+				const tempPresets = [
+					{ key: 'warm', label: 'Warm', mireds: clampMireds(370) },
+					{ key: 'neutral', label: 'Neutral', mireds: clampMireds(250) },
+					{ key: 'cool', label: 'Cool', mireds: clampMireds(167) },
+				]
+				for (const tp of tempPresets) {
+					const tempId = `preset_${varId}_temp_${tp.key}`
+					presets[tempId] = makeLayeredIconPreset({
+						name: `${label} ${tp.label}`,
+						text: `${label}\n${tp.label}`,
+						icon: 'brightness-6',
+						steps: [
+							{
+								down: [
+									{
+										actionId: ActionId.LightColorTemp,
+										options: { entity_id: lightEntity.id, colorTemp: tp.mireds, transition: 0 },
+									},
+								],
+								up: [],
+							},
+						],
+						feedbacks: [
+							makeLayeredFeedback({
+								feedbackId: FeedbackId.LightColorTempCompare,
+								options: {
+									entity_id: lightEntity.id,
+									unit: 'mireds',
+									comparitor: NumberComparitor.Equal,
+									value: tp.mireds,
+								},
+								bgcolor: tempRgb(tp.mireds),
+								icon: 'brightness-6',
+							}),
+						],
+					})
+					lightIds.push(tempId)
+				}
+			}
+
+			// ================================================================
+			// Effect Presets
+			// ================================================================
+			const effects = lightEntity.effects
+			if (effects && effects.length > 0) {
+				for (const effect of effects) {
+					const safeEffect = effect.replace(/[^a-zA-Z0-9_]/g, '_')
+					const effectId = `preset_${varId}_effect_${safeEffect}`
+					presets[effectId] = makeLayeredIconPreset({
+						name: `${label}: ${effect}`,
+						text: `${label}\n${effect}`,
+						icon: 'palette',
+						steps: [
+							{
+								down: [{ actionId: PrefixedActionIds.LightEffect + lightEntity.id, options: { effect } }],
+								up: [],
+							},
+						],
+						feedbacks: [
+							makeLayeredFeedback({
+								feedbackId: PrefixedFeedbackIds.LightEffect + lightEntity.id,
+								options: { effect },
+								bgcolor: combineRgb(0, 255, 0),
+								icon: 'palette',
+							}),
+						],
+					})
+					lightIds.push(effectId)
+				}
 			}
 		}
 

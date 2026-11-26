@@ -17,6 +17,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Climate** feedbacks: two-point target temperature low/high and current/target humidity value feedbacks, current/target temperature threshold comparison booleans, and per-entity mode (filtered to `supportedModes`), fan mode, preset, and swing mode boolean feedbacks (with migration from legacy `climate_mode`).
 - **Text Sensor** feedback: added `Match Type` (`Equals`, `Not Equals`, `Contains`, `Starts With`, `Regex`) to `Change from text sensor value`, with an upgrade script to backfill existing configs.
 
+### Changed
+
+- **Sensor** preset: upgraded to a layered icon preset (`entity.icon`, `deviceClass`, or unit-based MDI icon), appended `unitOfMeasurement` to display preset labels when defined, and added a dynamic percentage gauge for `%` / `battery` / `humidity` / `moisture` sensors.
+- **Binary Sensor** preset: upgraded to a layered icon preset with `deviceClass`-aware MDI icons (including active/inactive state pairs) and feedback colors (alert/safety red, opening amber, activity/detection cyan, cold blue, status/power green, connectivity green/red).
+- **Lock** presets: upgraded Lock and Unlock to layered icon presets with `LOCKING`/`UNLOCKING` (amber) and `JAMMED` (red alert) feedbacks, and added an **Open** preset for `supportsOpen` locks.
+- **Cover** presets: upgraded Open/Close to layered icon presets with `CoverOperation` (`IS_OPENING`/`IS_CLOSING` amber) feedbacks, and added **Stop** (`supportsStop`) and **Position %** (with horizontal gauge) presets.
+- **Fan** presets: upgraded Toggle to a layered icon preset (`fan-off`/`fan`), and added **Speed** (with horizontal gauge, speed-level icons, and step-cycling `1..N → Off` when `supportedSpeedCount <= 5`, plus discrete Low/Medium/High or Speed 1..N presets), **Oscillate** (`arrow-oscillating-off`/`arrow-oscillating`), **Direction** (Forward/Reverse), and **Preset Mode** presets.
+- **Light** presets: upgraded Toggle (`lightbulb-outline`/`lightbulb-on`) and Color (`palette` with dynamic contrast and color-temperature-to-RGB sync) to layered icon presets, and added **Brightness %** (with horizontal gauge), **Color Temp** (Warm/Neutral/Cool with matching active colors, including `rgbww` cold/warm white lights), and **Effect** presets.
+- **Climate** presets: upgraded mode presets to layered icon presets, and added **Status** (live current/target temperature and humidity with `ClimateAction` heating/cooling/drying/fan colors), **Fan Mode**, **Preset**, and **Swing Mode** presets.
+
+### Fixed
+
+- Resolved canonical entity IDs in `EsphomeWrapper` telemetry events so live state updates populate instance variables and refresh per-entity prefixed feedbacks (`ClimateMode`, `ClimateFanMode`, `ClimatePreset`, `ClimateSwingMode`, `FanPreset`, `LightEffect`, `SelectState`).
+
 ## [3.0.0] - 2026-11-25
 
 ### Added

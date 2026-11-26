@@ -1,7 +1,7 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { LockCommand, LockEntity, LockState } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
+import { AdapterPresets, EntityAdapter, makeLayeredFeedback, makeLayeredIconPreset, makePresetSection } from './base.js'
 import { PrefixedActionIds, FeedbackId } from '../util.js'
 import { EntityPicker } from '../choices.js'
 import { entityVariableId } from '../variables.js'
@@ -105,43 +105,112 @@ export const LockAdapter: EntityAdapter<LockEntity> = {
 		const presets: AdapterPresets['presets'] = {}
 		const ids: string[] = []
 		for (const entity of client.getEntities('lock')) {
-			const lockId = `preset_${entityVariableId(entity.id)}_lock`
-			presets[lockId] = makeSimplePreset(
-				`${entity.name || entity.id} Lock`,
-				`${entity.name || entity.id}\nLock`,
-				[
+			const lockEntity = entity as unknown as LockEntity & { id: string }
+			const label = lockEntity.name || lockEntity.id
+			const varId = entityVariableId(lockEntity.id)
+
+			const lockId = `preset_${varId}_lock`
+			presets[lockId] = makeLayeredIconPreset({
+				name: `${label} Lock`,
+				text: `${label}\nLock`,
+				icon: 'lock',
+				steps: [
 					{
-						down: [{ actionId: PrefixedActionIds.LockCommand + entity.id, options: { state: LockCommand.LOCK } }],
+						down: [{ actionId: PrefixedActionIds.LockCommand + lockEntity.id, options: { state: LockCommand.LOCK } }],
 						up: [],
 					},
 				],
-				[
-					{
+				feedbacks: [
+					makeLayeredFeedback({
 						feedbackId: FeedbackId.LockState,
-						options: { entity_id: entity.id, state: LockState.LOCKED },
-						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
-					},
+						options: { entity_id: lockEntity.id, state: LockState.LOCKED },
+						bgcolor: combineRgb(0, 255, 0),
+						icon: 'lock',
+					}),
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.LockState,
+						options: { entity_id: lockEntity.id, state: LockState.LOCKING },
+						bgcolor: combineRgb(255, 191, 0),
+						icon: 'lock',
+					}),
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.LockState,
+						options: { entity_id: lockEntity.id, state: LockState.JAMMED },
+						bgcolor: combineRgb(200, 0, 0),
+						icon: 'lock-alert',
+					}),
 				],
-			)
-			const unlockId = `preset_${entityVariableId(entity.id)}_unlock`
-			presets[unlockId] = makeSimplePreset(
-				`${entity.name || entity.id} Unlock`,
-				`${entity.name || entity.id}\nUnlock`,
-				[
+			})
+
+			const unlockId = `preset_${varId}_unlock`
+			presets[unlockId] = makeLayeredIconPreset({
+				name: `${label} Unlock`,
+				text: `${label}\nUnlock`,
+				icon: 'lock-open',
+				steps: [
 					{
-						down: [{ actionId: PrefixedActionIds.LockCommand + entity.id, options: { state: LockCommand.UNLOCK } }],
+						down: [{ actionId: PrefixedActionIds.LockCommand + lockEntity.id, options: { state: LockCommand.UNLOCK } }],
 						up: [],
 					},
 				],
-				[
-					{
+				feedbacks: [
+					makeLayeredFeedback({
 						feedbackId: FeedbackId.LockState,
-						options: { entity_id: entity.id, state: LockState.UNLOCKED },
-						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
-					},
+						options: { entity_id: lockEntity.id, state: LockState.UNLOCKED },
+						bgcolor: combineRgb(0, 255, 0),
+						icon: 'lock-open',
+					}),
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.LockState,
+						options: { entity_id: lockEntity.id, state: LockState.UNLOCKING },
+						bgcolor: combineRgb(255, 191, 0),
+						icon: 'lock-open',
+					}),
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.LockState,
+						options: { entity_id: lockEntity.id, state: LockState.JAMMED },
+						bgcolor: combineRgb(200, 0, 0),
+						icon: 'lock-alert',
+					}),
 				],
-			)
+			})
 			ids.push(lockId, unlockId)
+
+			if (lockEntity.supportsOpen) {
+				const openId = `preset_${varId}_open`
+				presets[openId] = makeLayeredIconPreset({
+					name: `${label} Open`,
+					text: `${label}\nOpen`,
+					icon: 'door-open',
+					steps: [
+						{
+							down: [{ actionId: PrefixedActionIds.LockCommand + lockEntity.id, options: { state: LockCommand.OPEN } }],
+							up: [],
+						},
+					],
+					feedbacks: [
+						makeLayeredFeedback({
+							feedbackId: FeedbackId.LockState,
+							options: { entity_id: lockEntity.id, state: LockState.OPEN },
+							bgcolor: combineRgb(0, 255, 0),
+							icon: 'door-open',
+						}),
+						makeLayeredFeedback({
+							feedbackId: FeedbackId.LockState,
+							options: { entity_id: lockEntity.id, state: LockState.OPENING },
+							bgcolor: combineRgb(255, 191, 0),
+							icon: 'door-open',
+						}),
+						makeLayeredFeedback({
+							feedbackId: FeedbackId.LockState,
+							options: { entity_id: lockEntity.id, state: LockState.JAMMED },
+							bgcolor: combineRgb(200, 0, 0),
+							icon: 'lock-alert',
+						}),
+					],
+				})
+				ids.push(openId)
+			}
 		}
 		return { sections: makePresetSection('locks', 'Locks', ids), presets }
 	},

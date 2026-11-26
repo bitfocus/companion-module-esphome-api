@@ -1,3 +1,7 @@
+// ============================================================================
+// Action IDs
+// ============================================================================
+
 export enum ActionId {
 	ButtonPush = 'button_push',
 	CoverStop = 'cover_stop',
@@ -31,6 +35,10 @@ export enum PrefixedActionIds {
 	NumberState = 'number_state_id_',
 	SelectState = 'select_state_id_',
 }
+
+// ============================================================================
+// Feedback IDs
+// ============================================================================
 
 export enum FeedbackId {
 	BinarySensorState = 'binary_sensor_state',
@@ -84,8 +92,24 @@ export enum PrefixedFeedbackIds {
 	SelectState = 'select_state_id_',
 }
 
+// ============================================================================
+// Shared Enums
+// ============================================================================
+
 export enum OnOffToggle {
 	On = 'on',
 	Off = 'off',
 	Toggle = 'toggle',
+}
+
+// ============================================================================
+// Color Helpers
+// ============================================================================
+
+export function isBrightRgb(r: number, g: number, b: number): boolean {
+	return 0.299 * r + 0.587 * g + 0.114 * b > 128
+}
+
+export function isBrightRgbNumber(rgb: number): boolean {
+	return isBrightRgb((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff)
 }
