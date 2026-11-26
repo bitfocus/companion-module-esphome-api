@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url)
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT_FILE = resolve(__dirname, '../src/generated/icons.ts')
 
-const ICON_SIZE = 32
+const ICON_SIZE = 96
 const ICON_COLORS = {
 	light: '#ffffff',
 	dark: '#000000',
