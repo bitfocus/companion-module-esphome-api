@@ -1,10 +1,21 @@
 import { CompanionActionDefinitions, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { CoverEntity, CoverOperation } from 'esphome-client'
 import { EsphomeWrapper } from '../esphomeWrapper.js'
-import { AdapterPresets, EntityAdapter, makePresetSection, makeSimplePreset } from './base.js'
+import { AdapterPresets, EntityAdapter, makeLayeredFeedback, makeLayeredIconPreset, makePresetSection } from './base.js'
 import { ActionId, PrefixedActionIds, FeedbackId } from '../util.js'
 import { EntityPicker, NumberComparitorPicker, NumberValuePicker, compareNumber } from '../choices.js'
 import { entityVariableId } from '../variables.js'
+
+const COVER_DEVICE_CLASS_ICONS: Record<string, { open: string; close: string }> = {
+	awning: { open: 'awning', close: 'awning-outline' },
+	curtain: { open: 'curtains', close: 'curtains-closed' },
+	door: { open: 'door-open', close: 'door-closed' },
+	garage: { open: 'garage-open', close: 'garage' },
+	gate: { open: 'gate-open', close: 'gate' },
+	shade: { open: 'roller-shade', close: 'roller-shade-closed' },
+	shutter: { open: 'window-shutter-open', close: 'window-shutter' },
+	window: { open: 'window-open', close: 'window-closed' },
+}
 
 export const CoverAdapter: EntityAdapter<CoverEntity> = {
 	entityType: 'cover',
@@ -188,33 +199,124 @@ export const CoverAdapter: EntityAdapter<CoverEntity> = {
 		const presets: AdapterPresets['presets'] = {}
 		const ids: string[] = []
 		for (const entity of client.getEntities('cover')) {
-			const openId = `preset_${entityVariableId(entity.id)}_open`
-			presets[openId] = makeSimplePreset(
-				`${entity.name || entity.id} Open`,
-				`${entity.name || entity.id}\nOpen`,
-				[{ down: [{ actionId: PrefixedActionIds.CoverPosition + entity.id, options: { value: 1 } }], up: [] }],
-				[
-					{
-						feedbackId: FeedbackId.CoverOpen,
-						options: { entity_id: entity.id, open: true },
-						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
-					},
+			const coverEntity = entity as unknown as CoverEntity & { id: string }
+			const label = coverEntity.name || coverEntity.id
+			const varId = entityVariableId(coverEntity.id)
+
+			const { open: openIcon, close: closeIcon } = (coverEntity.deviceClass &&
+				COVER_DEVICE_CLASS_ICONS[coverEntity.deviceClass]) || {
+				open: 'blinds-open',
+				close: 'blinds',
+			}
+
+			const openId = `preset_${varId}_open`
+			presets[openId] = makeLayeredIconPreset({
+				name: `${label} Open`,
+				text: `${label}\nOpen`,
+				icon: openIcon,
+				steps: [
+					{ down: [{ actionId: PrefixedActionIds.CoverPosition + coverEntity.id, options: { value: 1 } }], up: [] },
 				],
-			)
-			const closeId = `preset_${entityVariableId(entity.id)}_close`
-			presets[closeId] = makeSimplePreset(
-				`${entity.name || entity.id} Close`,
-				`${entity.name || entity.id}\nClose`,
-				[{ down: [{ actionId: PrefixedActionIds.CoverPosition + entity.id, options: { value: 0 } }], up: [] }],
-				[
-					{
+				feedbacks: [
+					makeLayeredFeedback({
 						feedbackId: FeedbackId.CoverOpen,
-						options: { entity_id: entity.id, open: false },
-						style: { color: combineRgb(0, 0, 0), bgcolor: combineRgb(0, 255, 0) },
-					},
+						options: { entity_id: coverEntity.id, open: true },
+						bgcolor: combineRgb(0, 255, 0),
+						icon: openIcon,
+					}),
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.CoverOperation,
+						options: { entity_id: coverEntity.id, operation: CoverOperation.IS_OPENING },
+						bgcolor: combineRgb(255, 191, 0),
+						icon: 'arrow-up',
+					}),
 				],
-			)
+			})
+
+			const closeId = `preset_${varId}_close`
+			presets[closeId] = makeLayeredIconPreset({
+				name: `${label} Close`,
+				text: `${label}\nClose`,
+				icon: closeIcon,
+				steps: [
+					{ down: [{ actionId: PrefixedActionIds.CoverPosition + coverEntity.id, options: { value: 0 } }], up: [] },
+				],
+				feedbacks: [
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.CoverOpen,
+						options: { entity_id: coverEntity.id, open: false },
+						bgcolor: combineRgb(0, 255, 0),
+						icon: closeIcon,
+					}),
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.CoverOperation,
+						options: { entity_id: coverEntity.id, operation: CoverOperation.IS_CLOSING },
+						bgcolor: combineRgb(255, 191, 0),
+						icon: 'arrow-down',
+					}),
+				],
+			})
 			ids.push(openId, closeId)
+
+			if (coverEntity.supportsStop) {
+				const stopId = `preset_${varId}_stop`
+				presets[stopId] = makeLayeredIconPreset({
+					name: `${label} Stop`,
+					text: `${label}\nStop`,
+					icon: 'stop',
+					steps: [{ down: [{ actionId: ActionId.CoverStop, options: { entity_id: coverEntity.id } }], up: [] }],
+					feedbacks: [
+						makeLayeredFeedback({
+							feedbackId: FeedbackId.CoverOperation,
+							options: { entity_id: coverEntity.id, operation: CoverOperation.IS_OPENING },
+							bgcolor: combineRgb(255, 191, 0),
+							icon: 'stop',
+						}),
+						makeLayeredFeedback({
+							feedbackId: FeedbackId.CoverOperation,
+							options: { entity_id: coverEntity.id, operation: CoverOperation.IS_CLOSING },
+							bgcolor: combineRgb(255, 191, 0),
+							icon: 'stop',
+						}),
+					],
+				})
+				ids.push(stopId)
+			}
+
+			const posId = `preset_${varId}_position`
+			presets[posId] = makeLayeredIconPreset({
+				name: `${label} Position`,
+				text: `${label}\n$(local:cover_position)%`,
+				icon: openIcon,
+				gauge: {
+					value: { isExpression: true, value: '$(local:cover_position)' },
+					min: 0,
+					max: 100,
+				},
+				feedbacks: [
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.CoverOperation,
+						options: { entity_id: coverEntity.id, operation: CoverOperation.IS_OPENING },
+						bgcolor: combineRgb(255, 191, 0),
+						icon: 'arrow-up',
+					}),
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.CoverOperation,
+						options: { entity_id: coverEntity.id, operation: CoverOperation.IS_CLOSING },
+						bgcolor: combineRgb(255, 191, 0),
+						icon: 'arrow-down',
+					}),
+				],
+				localVariables: [
+					{
+						variableType: 'feedback',
+						variableName: 'cover_position',
+						feedbackId: FeedbackId.CoverPosition,
+						options: { entity_id: coverEntity.id },
+					},
+				],
+			})
+			ids.push(posId)
 		}
 		return { sections: makePresetSection('covers', 'Covers', ids), presets }
 	},

@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Sensor** preset: upgraded to a layered icon preset (`entity.icon`, `deviceClass`, or unit-based MDI icon), appended `unitOfMeasurement` to display preset labels when defined, and added a dynamic percentage gauge for `%` / `battery` / `humidity` / `moisture` sensors.
 - **Binary Sensor** preset: upgraded to a layered icon preset with `deviceClass`-aware MDI icons (including active/inactive state pairs) and feedback colors (alert/safety red, opening amber, activity/detection cyan, cold blue, status/power green, connectivity green/red).
 - **Lock** presets: upgraded Lock and Unlock to layered icon presets with `LOCKING`/`UNLOCKING` (amber) and `JAMMED` (red alert) feedbacks, and added an **Open** preset for `supportsOpen` locks.
+- **Cover** presets: upgraded Open/Close to layered icon presets with `CoverOperation` (`IS_OPENING`/`IS_CLOSING` amber) feedbacks, and added **Stop** (`supportsStop`) and **Position %** (with horizontal gauge) presets.
 
 ## [3.0.0] - 2026-11-25
 
