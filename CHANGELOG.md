@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fan** presets: upgraded Toggle to a layered icon preset (`fan-off`/`fan`), and added **Speed** (with horizontal gauge, speed-level icons, and step-cycling `1..N → Off` when `supportedSpeedCount <= 5`, plus discrete Low/Medium/High or Speed 1..N presets), **Oscillate** (`arrow-oscillating-off`/`arrow-oscillating`), **Direction** (Forward/Reverse), and **Preset Mode** presets.
 - **Light** presets: upgraded Toggle (`lightbulb-outline`/`lightbulb-on`) and Color (`palette` with dynamic contrast and color-temperature-to-RGB sync) to layered icon presets, and added **Brightness %** (with horizontal gauge), **Color Temp** (Warm/Neutral/Cool with matching active colors, including `rgbww` cold/warm white lights), and **Effect** presets.
 
+### Fixed
+
+- Resolved canonical entity IDs in `EsphomeWrapper` telemetry events so live state updates populate instance variables and refresh per-entity prefixed feedbacks (`ClimateMode`, `ClimateFanMode`, `ClimatePreset`, `ClimateSwingMode`, `FanPreset`, `LightEffect`, `SelectState`).
+
 ## [3.0.0] - 2026-11-25
 
 ### Added
