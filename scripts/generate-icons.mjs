@@ -84,6 +84,7 @@ const MDI_ICONS = [
 	'palette',
 	'percent',
 	'play-circle',
+	'power',
 	'power-plug',
 	'power-plug-off',
 	'restart',
