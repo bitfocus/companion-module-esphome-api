@@ -107,7 +107,7 @@ export enum OnOffToggle {
 // ============================================================================
 
 export function isBrightRgb(r: number, g: number, b: number): boolean {
-	return 0.299 * r + 0.587 * g + 0.114 * b > 150
+	return 0.299 * r + 0.587 * g + 0.114 * b > 128
 }
 
 export function isBrightRgbNumber(rgb: number): boolean {
