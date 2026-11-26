@@ -287,13 +287,18 @@ export const CoverAdapter: EntityAdapter<CoverEntity> = {
 			presets[posId] = makeLayeredIconPreset({
 				name: `${label} Position`,
 				text: `${label}\n$(local:cover_position)%`,
-				icon: openIcon,
+				icon: closeIcon,
 				gauge: {
 					value: { isExpression: true, value: '$(local:cover_position)' },
 					min: 0,
 					max: 100,
 				},
 				feedbacks: [
+					makeLayeredFeedback({
+						feedbackId: FeedbackId.CoverOpen,
+						options: { entity_id: coverEntity.id, open: true },
+						icon: openIcon,
+					}),
 					makeLayeredFeedback({
 						feedbackId: FeedbackId.CoverOperation,
 						options: { entity_id: coverEntity.id, operation: CoverOperation.IS_OPENING },
