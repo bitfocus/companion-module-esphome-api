@@ -149,26 +149,42 @@ export function makeLayeredIconPreset({
 	}
 
 	if (gauge) {
-		elements.push({
-			type: 'gauge',
-			id: 'gauge',
-			name: 'Gauge',
-			orientation: 'horizontal',
-			x: 10,
-			y: 84,
-			width: 80,
-			height: 8,
-			min: gauge.min ?? 0,
-			max: gauge.max ?? 100,
-			value: gauge.value,
-			roundedEnds: true,
-			trackStyle: 'dimmed',
-			trackWidth: 25,
-			fillEnabled: true,
-			fillWidth: 100,
-			multiColour: true,
-			stops: gauge.stops ?? [{ value: 0, color: combineRgb(0, 180, 255), gradient: false }],
-		})
+		elements.push(
+			{
+				type: 'box',
+				id: 'gauge_track',
+				name: 'Gauge Track',
+				x: 9,
+				y: 83,
+				width: 82,
+				height: 10,
+				color: combineRgb(20, 20, 20),
+				borderWidth: 1,
+				borderColor: combineRgb(100, 100, 100),
+				borderPosition: 'inside',
+				cornerRadius: 4,
+			},
+			{
+				type: 'gauge',
+				id: 'gauge',
+				name: 'Gauge',
+				orientation: 'horizontal',
+				x: 10,
+				y: 84,
+				width: 80,
+				height: 8,
+				min: gauge.min ?? 0,
+				max: gauge.max ?? 100,
+				value: gauge.value,
+				roundedEnds: true,
+				trackStyle: 'transparent',
+				trackAmount: 0,
+				fillEnabled: true,
+				fillWidth: 100,
+				multiColour: true,
+				stops: gauge.stops ?? [{ value: 0, color: combineRgb(0, 180, 255), gradient: false }],
+			},
+		)
 	}
 
 	return {
